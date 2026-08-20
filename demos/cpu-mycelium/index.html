@@ -1,0 +1,42 @@
+<!doctype html>
+<!--
+  Entry point for the original deterministic CPU mycelium demo.
+  The implementation remains the verified baseline under src/.
+-->
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07110f" />
+    <link rel="icon" href="data:," />
+    <title>CPU-Myzel mit Fusionen</title>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Generatives dreidimensionales Myzel"></canvas>
+
+    <main class="panel">
+      <p class="eyebrow">THREE.JS MINI DEMO</p>
+      <h1>Myzel-Wachstum</h1>
+      <p class="description">
+        Wachstum und Fusion laufen deterministisch auf der CPU. Instanzierte
+        Segmente und Spitzen werden in zwei GPU-Draw-Calls dargestellt.
+      </p>
+
+      <dl class="stats" aria-live="polite">
+        <div><dt>Spitzen</dt><dd id="tip-count">0</dd></div>
+        <div><dt>Kanten</dt><dd id="edge-count">0</dd></div>
+        <div><dt>Fusionen</dt><dd id="fusion-count">0</dd></div>
+        <div><dt>Seed</dt><dd id="seed-value">0</dd></div>
+      </dl>
+
+      <div class="actions">
+        <button id="restart-button" type="button">Neues Muster</button>
+        <button id="pause-button" type="button" class="secondary">Pausieren</button>
+      </div>
+
+      <p class="hint"><a href="/">Alle Experimente</a> · Ziehen zum Drehen · Scrollen zum Zoomen</p>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

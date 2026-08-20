@@ -1,7 +1,21 @@
-# Mycelium Growth Demo
+# Procedural Root Experiments
 
-A minimal Three.js experiment for deterministic branching growth and stable
-tip-to-tip fusion.
+Independent Three.js experiments for generative root and mycelium networks.
+
+Open <http://127.0.0.1:5173/> for the plain experiment index.
+
+## Experiments
+
+- `/demos/cpu-mycelium/`: deterministic CPU branching and stable tip fusion.
+- `/demos/procedural-network/`: connected point topology with shader-only
+  WebGL2 growth, reinforcement, and retraction for up to 2,000 points.
+
+The procedural network generates immutable point and connection data once.
+One instanced low-poly tube draw call animates all tendrils analytically in
+dedicated GLSL3 shader files. Volume scaling updates a uniform and does not
+rebuild the topology.
+
+## Original CPU Demo
 
 The simulation runs on the CPU at a fixed 15 Hz. Rendering uses one GPU
 `InstancedMesh` for all cylindrical edges and one for active tips. This keeps
@@ -14,7 +28,7 @@ bun install
 bun run dev
 ```
 
-Open <http://127.0.0.1:5173>.
+Open one of the experiment routes listed above.
 
 ## Validate
 
@@ -23,7 +37,7 @@ bun run check
 bun run build
 ```
 
-## Architecture
+## CPU Demo Architecture
 
 - `src/simulation/mycelium-simulation.ts`: deterministic graph growth,
   branching, attraction, and fusion.

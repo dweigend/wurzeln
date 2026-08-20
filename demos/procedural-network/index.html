@@ -1,0 +1,55 @@
+<!doctype html>
+<!--
+  Entry point for the independent procedural WebGL2 network experiment.
+  Its controls configure volume and topology while GLSL shaders own all
+  per-frame growth, reinforcement, and retraction animation.
+-->
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08090b" />
+    <link rel="icon" href="data:," />
+    <title>Prozedurales WebGL2-Netzwerk</title>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Prozedurales dreidimensionales Netzwerk"></canvas>
+
+    <main class="panel">
+      <p class="eyebrow">WEBGL2 SHADER EXPERIMENT</p>
+      <h1>Prozedurales Netzwerk</h1>
+      <p class="description">
+        Eine verbundene Zielstruktur wird einmal erzeugt. Wachstum,
+        Verstärkung und Rückbildung laufen prozedural im Vertex-Shader.
+      </p>
+
+      <label class="control" for="volume-slider">
+        <span>Volumen <output id="volume-value">8 m</output></span>
+        <input id="volume-slider" type="range" min="4" max="24" step="0.5" value="8" />
+      </label>
+
+      <label class="control" for="point-slider">
+        <span>Punkte <output id="point-value">400</output></span>
+        <input id="point-slider" type="range" min="16" max="2000" step="16" value="400" />
+      </label>
+
+      <dl class="stats" aria-live="polite">
+        <div><dt>FPS</dt><dd id="fps-value">0</dd></div>
+        <div><dt>p95</dt><dd id="p95-value">0 ms</dd></div>
+        <div><dt>Verbindungen</dt><dd id="connection-value">0</dd></div>
+        <div><dt>Ranken</dt><dd id="tendril-value">0</dd></div>
+        <div><dt>Dreiecke</dt><dd id="triangle-value">0</dd></div>
+        <div><dt>Aufbau</dt><dd id="generation-value">0 ms</dd></div>
+      </dl>
+
+      <div class="actions">
+        <button id="restart-button" type="button">Neues Muster</button>
+        <button id="pause-button" type="button" class="secondary">Pausieren</button>
+      </div>
+
+      <p class="hint"><a href="/">Alle Experimente</a> · Punktzahl wird beim Loslassen aktualisiert</p>
+    </main>
+
+    <script type="module" src="/src/demos/procedural-network/main.ts"></script>
+  </body>
+</html>

@@ -1,43 +1,23 @@
 <!doctype html>
 <!--
-  Browser entry point for the mycelium growth demo.
-  It provides the canvas and a minimal status/control overlay; all simulation
-  and rendering behavior lives in TypeScript modules under src/.
+  Plain experiment index for the repository.
+  It intentionally contains no styling or runtime logic and only links to
+  independent demo entry points.
 -->
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07110f" />
     <link rel="icon" href="data:," />
-    <title>Myzel-Wachstum</title>
+    <title>Wurzel-Experimente</title>
   </head>
   <body>
-    <canvas id="scene" aria-label="Generatives dreidimensionales Myzel"></canvas>
-
-    <main class="panel">
-      <p class="eyebrow">THREE.JS MINI DEMO</p>
-      <h1>Myzel-Wachstum</h1>
-      <p class="description">
-        Wachstum und Fusion laufen deterministisch auf der CPU. Instanzierte
-        Segmente und Spitzen werden in zwei GPU-Draw-Calls dargestellt.
-      </p>
-
-      <dl class="stats" aria-live="polite">
-        <div><dt>Spitzen</dt><dd id="tip-count">0</dd></div>
-        <div><dt>Kanten</dt><dd id="edge-count">0</dd></div>
-        <div><dt>Fusionen</dt><dd id="fusion-count">0</dd></div>
-        <div><dt>Seed</dt><dd id="seed-value">0</dd></div>
-      </dl>
-
-      <div class="actions">
-        <button id="restart-button" type="button">Neues Muster</button>
-        <button id="pause-button" type="button" class="secondary">Pausieren</button>
-      </div>
-
-      <p class="hint">Ziehen zum Drehen · Scrollen zum Zoomen</p>
+    <main>
+      <h1>Wurzel-Experimente</h1>
+      <ul>
+        <li><a href="./demos/cpu-mycelium/">CPU-Myzel mit Fusionen</a></li>
+        <li><a href="./demos/procedural-network/">Prozedurales WebGL2-Netzwerk</a></li>
+      </ul>
     </main>
-
-    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
