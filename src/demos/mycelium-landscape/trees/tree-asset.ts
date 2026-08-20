@@ -57,4 +57,3 @@ function disposeTreeAsset(parts: readonly TreePart[]): void {
   for (const texture of textures) texture.dispose();
   for (const geometry of geometries) geometry.dispose();
 }
-

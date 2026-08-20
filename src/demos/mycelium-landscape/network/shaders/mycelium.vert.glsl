@@ -88,4 +88,3 @@ void main() {
   vViewDepth = -viewPosition.z;
   gl_Position = projectionMatrix * viewPosition;
 }
-

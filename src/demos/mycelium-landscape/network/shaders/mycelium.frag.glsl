@@ -22,4 +22,3 @@ void main() {
   float fog = 1.0 - exp(-uFogDensity * uFogDensity * vViewDepth * vViewDepth);
   outColor = vec4(mix(color, uFogColor, clamp(fog, 0.0, 1.0)), 1.0);
 }
-

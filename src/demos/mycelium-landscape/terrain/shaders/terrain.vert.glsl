@@ -18,4 +18,3 @@ void main() {
   vUv = uv;
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
-

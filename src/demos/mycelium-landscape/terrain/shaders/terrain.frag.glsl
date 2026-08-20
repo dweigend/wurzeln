@@ -34,4 +34,3 @@ void main() {
   vec3 color = mix(lowColor, highColor, height) * diffuse;
   outColor = vec4(color, 1.0);
 }
-

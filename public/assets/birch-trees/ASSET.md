@@ -8,4 +8,3 @@
 - SHA-256: `f2e47d42052327adb2c232087fdfad06acf091acabad01abf180d342a5de03a8`
 
 The demo renders the lowest-triangle `BirchTree_4` variant from the pack.
-

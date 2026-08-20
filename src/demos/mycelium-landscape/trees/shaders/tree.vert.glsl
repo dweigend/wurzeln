@@ -19,4 +19,3 @@ void main() {
   vNormal = normalize(mat3(modelMatrix * instanceMatrix) * normal);
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
-
