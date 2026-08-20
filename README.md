@@ -1,8 +1,6 @@
 # Wurzeln
 
-Three small, independent Three.js demos for root and mycelium networks. The
-repository intentionally keeps shared technical code small and leaves concrete
-scene, UI, and rendering decisions inside each demo.
+Three  Three.js demos for root and networks.
 
 ## Run
 
