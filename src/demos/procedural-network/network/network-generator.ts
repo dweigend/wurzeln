@@ -1,19 +1,21 @@
 /**
- * One-shot procedural data generation for the WebGL2 network experiment.
- * It creates normalized points, a guaranteed connected graph, and compact
- * typed attributes consumed directly by the instanced tendril shader.
+ * Creates immutable instance data for the procedural mycelium experiment.
+ * Every connection belongs to one graph; continuous reinforcement values from
+ * network traffic replace separate stable and exploratory geometry systems.
  */
 
-import { createConnectedEdges } from './network-topology.ts';
+import { createMycelialTopology } from './network-topology.ts';
 
 export const MIN_POINT_COUNT = 16;
 export const MAX_POINT_COUNT = 2_000;
 
 const POINT_BOUNDARY = 0.43;
-const LOOP_RATIO = 0.08;
-const DECOYS_PER_POINT = 1;
-const STABLE_KIND = 1;
-const DECOY_KIND = 0;
+const GROWTH_WINDOW_SECONDS = 8;
+const GROWTH_JITTER_SECONDS = 0.65;
+const MIN_GROWTH_DURATION_SECONDS = 1.4;
+const GROWTH_DURATION_VARIATION_SECONDS = 1.2;
+const MIN_HYPHA_RADIUS = 0.00042;
+const HYPHA_RADIUS_VARIATION = 0.00024;
 
 export type NetworkOptions = {
   seed: number;
@@ -29,38 +31,50 @@ export type GeneratedNetwork = {
   startTimes: Float32Array;
   durations: Float32Array;
   radii: Float32Array;
-  kinds: Float32Array;
-  stableConnectionCount: number;
-  decoyCount: number;
-  tendrilCount: number;
+  reinforcements: Float32Array;
+  connectionCount: number;
+  reinforcedConnectionCount: number;
+  hyphaCount: number;
 };
 
-type TendrilBuffers = Pick<
+type HyphaBuffers = Pick<
   GeneratedNetwork,
-  'starts' | 'ends' | 'seeds' | 'startTimes' | 'durations' | 'radii' | 'kinds'
+  'starts' | 'ends' | 'seeds' | 'startTimes' | 'durations' | 'radii' | 'reinforcements'
 >;
+
+type HyphaWriteContext = {
+  points: Float32Array;
+  connections: Uint32Array;
+  growthSteps: Int32Array;
+  sourceReinforcements: Float32Array;
+  buffers: HyphaBuffers;
+  random: () => number;
+};
 
 export function generateNetwork(options: Readonly<NetworkOptions>): GeneratedNetwork {
   const pointCount = clampPointCount(options.pointCount);
   const random = createRandom(options.seed);
   const points = createPoints(pointCount, random);
-  const requestedLoops = Math.round(pointCount * LOOP_RATIO);
-  const connections = createConnectedEdges(points, requestedLoops, random);
-  const stableConnectionCount = connections.length / 2;
-  const decoyCount = pointCount * DECOYS_PER_POINT;
-  const tendrilCount = stableConnectionCount + decoyCount;
-  const buffers = createTendrilBuffers(tendrilCount);
+  const topology = createMycelialTopology(points);
+  const connectionCount = topology.connections.length / 2;
+  const buffers = createHyphaBuffers(connectionCount);
 
-  writeStableTendrils(points, connections, buffers, random);
-  writeDecoyTendrils(points, stableConnectionCount, buffers, random);
+  writeHyphae({
+    points,
+    connections: topology.connections,
+    growthSteps: topology.growthSteps,
+    sourceReinforcements: topology.reinforcements,
+    buffers,
+    random,
+  });
 
   return {
     points,
-    connections,
+    connections: topology.connections,
     ...buffers,
-    stableConnectionCount,
-    decoyCount,
-    tendrilCount,
+    connectionCount,
+    reinforcedConnectionCount: topology.reinforcedConnectionCount,
+    hyphaCount: connectionCount,
   };
 }
 
@@ -76,72 +90,45 @@ function createPoints(pointCount: number, random: () => number): Float32Array {
   return points;
 }
 
-function createTendrilBuffers(tendrilCount: number): TendrilBuffers {
+function createHyphaBuffers(hyphaCount: number): HyphaBuffers {
   return {
-    starts: new Float32Array(tendrilCount * 3),
-    ends: new Float32Array(tendrilCount * 3),
-    seeds: new Float32Array(tendrilCount),
-    startTimes: new Float32Array(tendrilCount),
-    durations: new Float32Array(tendrilCount),
-    radii: new Float32Array(tendrilCount),
-    kinds: new Float32Array(tendrilCount),
+    starts: new Float32Array(hyphaCount * 3),
+    ends: new Float32Array(hyphaCount * 3),
+    seeds: new Float32Array(hyphaCount),
+    startTimes: new Float32Array(hyphaCount),
+    durations: new Float32Array(hyphaCount),
+    radii: new Float32Array(hyphaCount),
+    reinforcements: new Float32Array(hyphaCount),
   };
 }
 
-function writeStableTendrils(
-  points: Float32Array,
-  connections: Uint32Array,
-  buffers: TendrilBuffers,
-  random: () => number,
-): void {
-  const connectionCount = connections.length / 2;
-  for (let index = 0; index < connectionCount; index += 1) {
-    const startIndex = connections[index * 2] ?? 0;
-    const endIndex = connections[index * 2 + 1] ?? 0;
-    copyPoint(points, startIndex, buffers.starts, index);
-    copyPoint(points, endIndex, buffers.ends, index);
-    buffers.seeds[index] = random() * 1_000;
-    buffers.startTimes[index] = random() * 3 + (index / connectionCount) * 8;
-    buffers.durations[index] = 2.5 + random() * 2.5;
-    buffers.radii[index] = 0.0028 + random() * 0.0015;
-    buffers.kinds[index] = STABLE_KIND;
+function writeHyphae(context: Readonly<HyphaWriteContext>): void {
+  const maximumStep = Math.max(1, ...context.growthSteps);
+  const connectionCount = context.connections.length / 2;
+
+  for (let edge = 0; edge < connectionCount; edge += 1) {
+    const start = context.connections[edge * 2] ?? 0;
+    const end = context.connections[edge * 2 + 1] ?? 0;
+    copyPoint(context.points, start, context.buffers.starts, edge);
+    copyPoint(context.points, end, context.buffers.ends, edge);
+    context.buffers.seeds[edge] = context.random() * 1_000;
+    context.buffers.startTimes[edge] = edgeStartTime(start, end, context, maximumStep);
+    context.buffers.durations[edge] =
+      MIN_GROWTH_DURATION_SECONDS + context.random() * GROWTH_DURATION_VARIATION_SECONDS;
+    context.buffers.radii[edge] = MIN_HYPHA_RADIUS + context.random() * HYPHA_RADIUS_VARIATION;
+    context.buffers.reinforcements[edge] = context.sourceReinforcements[edge] ?? 0;
   }
 }
 
-function writeDecoyTendrils(
-  points: Float32Array,
-  stableCount: number,
-  buffers: TendrilBuffers,
-  random: () => number,
-): void {
-  const pointCount = points.length / 3;
-  for (let pointIndex = 0; pointIndex < pointCount; pointIndex += 1) {
-    const tendrilIndex = stableCount + pointIndex;
-    copyPoint(points, pointIndex, buffers.starts, tendrilIndex);
-    writeDecoyEnd(points, pointIndex, buffers.ends, tendrilIndex, random);
-    buffers.seeds[tendrilIndex] = random() * 1_000;
-    buffers.startTimes[tendrilIndex] = random() * 9;
-    buffers.durations[tendrilIndex] = 1.8 + random() * 2.2;
-    buffers.radii[tendrilIndex] = 0.0018 + random() * 0.0012;
-    buffers.kinds[tendrilIndex] = DECOY_KIND;
-  }
-}
-
-function writeDecoyEnd(
-  points: Float32Array,
-  pointIndex: number,
-  ends: Float32Array,
-  tendrilIndex: number,
-  random: () => number,
-): void {
-  const sourceOffset = pointIndex * 3;
-  const targetOffset = tendrilIndex * 3;
-  const direction = randomUnitVector(random);
-  const length = 0.07 + random() * 0.2;
-  for (let axis = 0; axis < 3; axis += 1) {
-    const value = (points[sourceOffset + axis] ?? 0) + (direction[axis] ?? 0) * length;
-    ends[targetOffset + axis] = Math.min(POINT_BOUNDARY, Math.max(-POINT_BOUNDARY, value));
-  }
+function edgeStartTime(
+  start: number,
+  end: number,
+  context: Readonly<HyphaWriteContext>,
+  maximumStep: number,
+): number {
+  const growthStep = Math.min(context.growthSteps[start] ?? 0, context.growthSteps[end] ?? 0);
+  const scheduled = (growthStep / maximumStep) * GROWTH_WINDOW_SECONDS;
+  return scheduled + context.random() * GROWTH_JITTER_SECONDS;
 }
 
 function copyPoint(
@@ -155,13 +142,6 @@ function copyPoint(
   target[targetOffset] = source[sourceOffset] ?? 0;
   target[targetOffset + 1] = source[sourceOffset + 1] ?? 0;
   target[targetOffset + 2] = source[sourceOffset + 2] ?? 0;
-}
-
-function randomUnitVector(random: () => number): readonly [number, number, number] {
-  const y = random() * 2 - 1;
-  const angle = random() * Math.PI * 2;
-  const radial = Math.sqrt(1 - y * y);
-  return [Math.cos(angle) * radial, y, Math.sin(angle) * radial];
 }
 
 function createRandom(seed: number): () => number {

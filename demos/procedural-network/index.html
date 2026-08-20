@@ -1,8 +1,8 @@
 <!doctype html>
 <!--
   Entry point for the independent procedural WebGL2 network experiment.
-  Its controls configure volume and topology while GLSL shaders own all
-  per-frame growth, reinforcement, and retraction animation.
+  Its controls configure volume and topology while GLSL shaders animate one
+  continuously weighted mycelial graph without separate edge categories.
 -->
 <html lang="de">
   <head>
@@ -19,8 +19,9 @@
       <p class="eyebrow">WEBGL2 SHADER EXPERIMENT</p>
       <h1>Prozedurales Netzwerk</h1>
       <p class="description">
-        Eine verbundene Zielstruktur wird einmal erzeugt. Wachstum,
-        Verstärkung und Rückbildung laufen prozedural im Vertex-Shader.
+        Ein dichtes Hyphengeflecht wächst von mehreren Punkten zusammen.
+        Transport durch dasselbe Netz verstärkt wichtige Bahnen und lässt
+        schwach genutzte Verbindungen zurückgehen.
       </p>
 
       <label class="control" for="volume-slider">
@@ -36,8 +37,8 @@
       <dl class="stats" aria-live="polite">
         <div><dt>FPS</dt><dd id="fps-value">0</dd></div>
         <div><dt>p95</dt><dd id="p95-value">0 ms</dd></div>
-        <div><dt>Verbindungen</dt><dd id="connection-value">0</dd></div>
-        <div><dt>Ranken</dt><dd id="tendril-value">0</dd></div>
+        <div><dt>Hyphen</dt><dd id="hypha-value">0</dd></div>
+        <div><dt>Transportbahnen</dt><dd id="cord-value">0</dd></div>
         <div><dt>Dreiecke</dt><dd id="triangle-value">0</dd></div>
         <div><dt>Aufbau</dt><dd id="generation-value">0 ms</dd></div>
       </dl>

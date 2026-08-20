@@ -1,6 +1,6 @@
 /**
  * WebGL2 instanced view for the procedural network experiment.
- * It owns three drawables: shader-deformed tendrils, point nodes, and a box
+ * It owns three drawables: shader-deformed hyphae, point nodes, and a box
  * boundary. Runtime animation changes uniforms only; topology stays immutable.
  */
 
@@ -28,12 +28,12 @@ import volumeFragmentShader from './shaders/volume.frag.glsl?raw';
 import volumeVertexShader from './shaders/volume.vert.glsl?raw';
 
 const RADIAL_SEGMENTS = 3;
-const LONGITUDINAL_SEGMENTS = 12;
-const TRIANGLES_PER_TENDRIL = RADIAL_SEGMENTS * LONGITUDINAL_SEGMENTS * 2;
+const LONGITUDINAL_SEGMENTS = 16;
+const TRIANGLES_PER_HYPHA = RADIAL_SEGMENTS * LONGITUDINAL_SEGMENTS * 2;
 const BACKGROUND_COLOR = new Color('#08090b');
 
 export type ProceduralNetworkViewStats = {
-  tendrilCount: number;
+  hyphaCount: number;
   triangleCount: number;
 };
 
@@ -56,7 +56,7 @@ export class ProceduralNetworkView {
   private readonly volumeLines = createVolumeLines(this.volumeMaterial);
   private tendrilMesh: Mesh<InstancedBufferGeometry, ShaderMaterial> | undefined;
   private pointMesh: Points<BufferGeometry, ShaderMaterial> | undefined;
-  private currentStats: ProceduralNetworkViewStats = { tendrilCount: 0, triangleCount: 0 };
+  private currentStats: ProceduralNetworkViewStats = { hyphaCount: 0, triangleCount: 0 };
 
   constructor(scene: Scene) {
     this.group.add(this.volumeLines);
@@ -73,8 +73,8 @@ export class ProceduralNetworkView {
     this.pointMesh = createPointMesh(network.points, this.pointMaterial);
     this.group.add(this.tendrilMesh, this.pointMesh);
     this.currentStats = {
-      tendrilCount: network.tendrilCount,
-      triangleCount: network.tendrilCount * TRIANGLES_PER_TENDRIL,
+      hyphaCount: network.hyphaCount,
+      triangleCount: network.hyphaCount * TRIANGLES_PER_HYPHA,
     };
   }
 
@@ -177,8 +177,11 @@ function createTendrilGeometry(network: GeneratedNetwork): InstancedBufferGeomet
   geometry.setAttribute('aStartTime', new InstancedBufferAttribute(network.startTimes, 1));
   geometry.setAttribute('aDuration', new InstancedBufferAttribute(network.durations, 1));
   geometry.setAttribute('aRadius', new InstancedBufferAttribute(network.radii, 1));
-  geometry.setAttribute('aKind', new InstancedBufferAttribute(network.kinds, 1));
-  geometry.instanceCount = network.tendrilCount;
+  geometry.setAttribute(
+    'aReinforcement',
+    new InstancedBufferAttribute(network.reinforcements, 1),
+  );
+  geometry.instanceCount = network.hyphaCount;
   return geometry;
 }
 

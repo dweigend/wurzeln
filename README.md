@@ -7,13 +7,14 @@ Open <http://127.0.0.1:5173/> for the plain experiment index.
 ## Experiments
 
 - `/demos/cpu-mycelium/`: deterministic CPU branching and stable tip fusion.
-- `/demos/procedural-network/`: connected point topology with shader-only
-  WebGL2 growth, reinforcement, and retraction for up to 2,000 points.
+- `/demos/procedural-network/`: dense mycelial topology with shader-only WebGL2
+  growth and traffic-driven remodeling for up to 2,000 points.
 
-The procedural network generates immutable point and connection data once.
-One instanced low-poly tube draw call animates all tendrils analytically in
-dedicated GLSL3 shader files. Volume scaling updates a uniform and does not
-rebuild the topology.
+The procedural network generates one immutable local graph. Approximate flow
+through that same graph produces continuous reinforcement values: frequently
+used hyphae become cords while weak paths regress. One instanced low-poly tube
+draw call animates all geometry analytically in dedicated GLSL3 shader files.
+Volume scaling updates a uniform and does not rebuild the topology.
 
 ## Original CPU Demo
 

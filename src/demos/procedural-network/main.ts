@@ -43,8 +43,8 @@ type DemoElements = {
   pauseButton: HTMLButtonElement;
   fpsValue: HTMLElement;
   p95Value: HTMLElement;
-  connectionValue: HTMLElement;
-  tendrilValue: HTMLElement;
+  hyphaValue: HTMLElement;
+  cordValue: HTMLElement;
   triangleValue: HTMLElement;
   generationValue: HTMLElement;
 };
@@ -209,8 +209,10 @@ function updatePointOutput(runtime: DemoRuntime): void {
 function updateStats(runtime: DemoRuntime): void {
   runtime.elements.fpsValue.textContent = formatNumber(runtime.metrics.averageFramesPerSecond);
   runtime.elements.p95Value.textContent = `${formatNumber(runtime.metrics.p95Milliseconds)} ms`;
-  runtime.elements.connectionValue.textContent = formatInteger(runtime.network.stableConnectionCount);
-  runtime.elements.tendrilValue.textContent = formatInteger(runtime.view.stats.tendrilCount);
+  runtime.elements.hyphaValue.textContent = formatInteger(runtime.view.stats.hyphaCount);
+  runtime.elements.cordValue.textContent = formatInteger(
+    runtime.network.reinforcedConnectionCount,
+  );
   runtime.elements.triangleValue.textContent = formatInteger(runtime.view.stats.triangleCount);
   runtime.elements.generationValue.textContent = `${formatNumber(runtime.generationMilliseconds)} ms`;
 }
@@ -291,8 +293,8 @@ function getDemoElements(): DemoElements {
     pauseButton: requireElement('#pause-button'),
     fpsValue: requireElement('#fps-value'),
     p95Value: requireElement('#p95-value'),
-    connectionValue: requireElement('#connection-value'),
-    tendrilValue: requireElement('#tendril-value'),
+    hyphaValue: requireElement('#hypha-value'),
+    cordValue: requireElement('#cord-value'),
     triangleValue: requireElement('#triangle-value'),
     generationValue: requireElement('#generation-value'),
   };

@@ -1,5 +1,5 @@
 /**
- * Determinism, bounds, and connectivity checks for generated shader data.
+ * Determinism, bounds, connectivity, and reinforcement checks for shader data.
  * The upper-limit test protects the requested 2,000-point experiment size.
  */
 
@@ -13,19 +13,35 @@ describe('generateNetwork', () => {
 
     expect(first.points).toEqual(second.points);
     expect(first.connections).toEqual(second.connections);
+    expect(first.reinforcements).toEqual(second.reinforcements);
     for (const coordinate of first.points) expect(Math.abs(coordinate)).toBeLessThanOrEqual(0.43);
   });
 
   test('connects every generated point', () => {
     const network = generateNetwork({ seed: 73, pointCount: 256 });
     expect(countConnectedPoints(network.points.length / 3, network.connections)).toBe(256);
-    expect(network.stableConnectionCount).toBeGreaterThanOrEqual(255);
+    expect(network.connectionCount).toBeGreaterThanOrEqual(255);
+    expect(network.hyphaCount).toBe(network.connectionCount);
+  });
+
+  test('derives a continuous transport hierarchy from the same graph', () => {
+    const network = generateNetwork({ seed: 84, pointCount: 512 });
+    const distinctWeights = new Set(
+      Array.from(network.reinforcements, (weight) => weight.toFixed(3)),
+    );
+
+    expect(network.reinforcements.length).toBe(network.connectionCount);
+    expect(Math.min(...network.reinforcements)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...network.reinforcements)).toBeLessThanOrEqual(1);
+    expect(distinctWeights.size).toBeGreaterThan(4);
+    expect(network.reinforcedConnectionCount).toBeGreaterThan(0);
+    expect(network.reinforcedConnectionCount).toBeLessThan(network.connectionCount);
   });
 
   test('supports the requested 2,000-point upper limit', () => {
     const network = generateNetwork({ seed: 91, pointCount: MAX_POINT_COUNT });
     expect(network.points.length).toBe(MAX_POINT_COUNT * 3);
-    expect(network.tendrilCount).toBe(network.stableConnectionCount + MAX_POINT_COUNT);
+    expect(network.hyphaCount).toBe(network.connections.length / 2);
     expect(countConnectedPoints(MAX_POINT_COUNT, network.connections)).toBe(MAX_POINT_COUNT);
   });
 });

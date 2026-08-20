@@ -1,7 +1,7 @@
 /*
- * Procedural GLSL3 tube deformation for stable and decaying tendrils.
- * A shared low-poly cylinder is bent between two endpoints; growth and radius
- * animation are derived analytically from time and immutable instance data.
+ * Procedural GLSL3 deformation for one continuous mycelial edge system.
+ * Every tube starts as a fine hypha; its transport weight later controls
+ * reinforcement or regression without a separate stable-edge category.
  */
 
 uniform float uTime;
@@ -13,11 +13,11 @@ in float aSeed;
 in float aStartTime;
 in float aDuration;
 in float aRadius;
-in float aKind;
+in float aReinforcement;
 
 out vec3 vNormal;
-out float vKind;
-out float vStrength;
+out float vReinforcement;
+out float vMaturity;
 out float vViewDepth;
 
 const float PI = 3.141592653589793;
@@ -44,10 +44,10 @@ vec3 centerline(float parameter) {
   vec3 up = safeDirection(cross(side, direction));
   vec3 base = mix(aStart, aEnd, parameter);
   float boundaryDistance = 0.48 - max(max(abs(base.x), abs(base.y)), abs(base.z));
-  float amplitude = min(directLength * 0.16, max(0.0, boundaryDistance * 0.65));
+  float amplitude = min(directLength * 0.075, max(0.0, boundaryDistance * 0.45));
   float envelope = sin(PI * parameter);
-  float frequencyA = 1.5 + hash(aSeed) * 3.0;
-  float frequencyB = 2.0 + hash(aSeed + 7.1) * 4.0;
+  float frequencyA = 0.65 + hash(aSeed) * 1.15;
+  float frequencyB = 0.9 + hash(aSeed + 7.1) * 1.45;
   float waveA = sin((parameter * frequencyA + hash(aSeed + 2.3)) * PI * 2.0);
   float waveB = sin((parameter * frequencyB + hash(aSeed + 5.7)) * PI * 2.0);
   return base + (side * waveA + up * waveB * 0.72) * amplitude * envelope;
@@ -56,12 +56,13 @@ vec3 centerline(float parameter) {
 float visibleRadius(float parameter, float localAge) {
   float started = step(0.0, localAge);
   float growth = smoothstep(0.0, 1.0, clamp(localAge, 0.0, 1.0));
-  float stablePath = step(0.5, aKind);
-  float pathCoordinate = mix(parameter, min(parameter, 1.0 - parameter) * 2.0, stablePath);
+  float pathCoordinate = min(parameter, 1.0 - parameter) * 2.0;
   float revealed = 1.0 - smoothstep(growth, growth + 0.075, pathCoordinate);
-  float decay = mix(1.0 - smoothstep(1.05, 1.45, localAge), 1.0, stablePath);
-  float reinforcement = mix(1.0, mix(0.7, 1.75, smoothstep(1.0, 1.35, localAge)), stablePath);
-  return aRadius * started * revealed * decay * reinforcement;
+  float maturity = smoothstep(1.05, 2.6, localAge);
+  float transport = pow(aReinforcement, 1.8);
+  float matureRadius = aRadius * mix(0.42, 8.0, transport);
+  float radius = mix(aRadius, matureRadius, maturity);
+  return radius * started * revealed;
 }
 
 void main() {
@@ -79,8 +80,8 @@ void main() {
   vec4 viewPosition = modelViewMatrix * vec4(localPosition, 1.0);
 
   vNormal = normalize(mat3(modelMatrix) * radialOffset);
-  vKind = aKind;
-  vStrength = smoothstep(0.85, 1.35, localAge);
+  vReinforcement = aReinforcement;
+  vMaturity = smoothstep(1.05, 2.6, localAge);
   vViewDepth = -viewPosition.z;
   gl_Position = projectionMatrix * viewPosition;
 }
