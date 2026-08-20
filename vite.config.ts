@@ -17,6 +17,10 @@ export default defineConfig({
           import.meta.dirname,
           'demos/procedural-network/index.html',
         ),
+        myceliumLandscape: resolve(
+          import.meta.dirname,
+          'demos/mycelium-landscape/index.html',
+        ),
       },
     },
   },

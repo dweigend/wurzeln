@@ -35,11 +35,16 @@ const MAX_RESOURCE_COUNT = 12;
 const RESOURCE_DENSITY_DIVISOR = 5;
 const REINFORCED_THRESHOLD = 0.42;
 
-export function createMycelialTopology(points: Float32Array): MycelialTopology {
+export function createMycelialTopology(
+  points: Float32Array,
+  resourcePointIndices?: readonly number[],
+): MycelialTopology {
   const connections = createConnectedLocalGraph(points);
   const pointCount = points.length / 3;
   const adjacency = createAdjacency(pointCount, connections);
-  const resources = selectResourcePoints(points, resourceCountFor(pointCount));
+  const resources = resourcePointIndices
+    ? normalizeResourcePoints(resourcePointIndices, pointCount)
+    : selectResourcePoints(points, resourceCountFor(pointCount));
   const growthTree = createGrowthTree(adjacency, resources);
   const reinforcements = calculateReinforcements(adjacency, resources, growthTree);
 
@@ -49,6 +54,14 @@ export function createMycelialTopology(points: Float32Array): MycelialTopology {
     reinforcements,
     reinforcedConnectionCount: countReinforcedConnections(reinforcements),
   };
+}
+
+function normalizeResourcePoints(resources: readonly number[], pointCount: number): number[] {
+  const valid = resources.filter(
+    (point) => Number.isInteger(point) && point >= 0 && point < pointCount,
+  );
+  const unique = [...new Set(valid)];
+  return unique.length > 0 ? unique : [0];
 }
 
 function createConnectedLocalGraph(points: Float32Array): Uint32Array {

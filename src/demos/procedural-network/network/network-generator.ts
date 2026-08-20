@@ -22,6 +22,14 @@ export type NetworkOptions = {
   pointCount: number;
 };
 
+export type PointNetworkOptions = {
+  seed: number;
+  points: Float32Array;
+  resourcePointIndices?: readonly number[];
+  minimumRadius?: number;
+  radiusVariation?: number;
+};
+
 export type GeneratedNetwork = {
   points: Float32Array;
   connections: Uint32Array;
@@ -49,27 +57,38 @@ type HyphaWriteContext = {
   sourceReinforcements: Float32Array;
   buffers: HyphaBuffers;
   random: () => number;
+  minimumRadius: number;
+  radiusVariation: number;
 };
 
 export function generateNetwork(options: Readonly<NetworkOptions>): GeneratedNetwork {
   const pointCount = clampPointCount(options.pointCount);
   const random = createRandom(options.seed);
   const points = createPoints(pointCount, random);
-  const topology = createMycelialTopology(points);
+  return generateNetworkFromPoints({ seed: options.seed, points });
+}
+
+export function generateNetworkFromPoints(
+  options: Readonly<PointNetworkOptions>,
+): GeneratedNetwork {
+  const random = createRandom(options.seed);
+  const topology = createMycelialTopology(options.points, options.resourcePointIndices);
   const connectionCount = topology.connections.length / 2;
   const buffers = createHyphaBuffers(connectionCount);
 
   writeHyphae({
-    points,
+    points: options.points,
     connections: topology.connections,
     growthSteps: topology.growthSteps,
     sourceReinforcements: topology.reinforcements,
     buffers,
     random,
+    minimumRadius: options.minimumRadius ?? MIN_HYPHA_RADIUS,
+    radiusVariation: options.radiusVariation ?? HYPHA_RADIUS_VARIATION,
   });
 
   return {
-    points,
+    points: options.points,
     connections: topology.connections,
     ...buffers,
     connectionCount,
@@ -115,7 +134,8 @@ function writeHyphae(context: Readonly<HyphaWriteContext>): void {
     context.buffers.startTimes[edge] = edgeStartTime(start, end, context, maximumStep);
     context.buffers.durations[edge] =
       MIN_GROWTH_DURATION_SECONDS + context.random() * GROWTH_DURATION_VARIATION_SECONDS;
-    context.buffers.radii[edge] = MIN_HYPHA_RADIUS + context.random() * HYPHA_RADIUS_VARIATION;
+    context.buffers.radii[edge] =
+      context.minimumRadius + context.random() * context.radiusVariation;
     context.buffers.reinforcements[edge] = context.sourceReinforcements[edge] ?? 0;
   }
 }

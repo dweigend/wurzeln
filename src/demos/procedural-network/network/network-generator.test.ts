@@ -4,7 +4,11 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { generateNetwork, MAX_POINT_COUNT } from './network-generator.ts';
+import {
+  generateNetwork,
+  generateNetworkFromPoints,
+  MAX_POINT_COUNT,
+} from './network-generator.ts';
 
 describe('generateNetwork', () => {
   test('is deterministic and remains inside the normalized volume', () => {
@@ -43,6 +47,28 @@ describe('generateNetwork', () => {
     expect(network.points.length).toBe(MAX_POINT_COUNT * 3);
     expect(network.hyphaCount).toBe(network.connections.length / 2);
     expect(countConnectedPoints(MAX_POINT_COUNT, network.connections)).toBe(MAX_POINT_COUNT);
+  });
+
+  test('accepts explicit resource points for landscape networks', () => {
+    const points = new Float32Array([
+      -1, 0, 0,
+      0, -1, 0,
+      1, 0, 0,
+      0, 0, 1,
+    ]);
+    const network = generateNetworkFromPoints({
+      seed: 12,
+      points,
+      resourcePointIndices: [0, 2],
+      minimumRadius: 0.01,
+      radiusVariation: 0,
+    });
+
+    expect(network.points).toBe(points);
+    expect(network.hyphaCount).toBeGreaterThanOrEqual(points.length / 3 - 1);
+    expect(Array.from(network.radii).every((radius) => Math.abs(radius - 0.01) < 0.000_001)).toBe(
+      true,
+    );
   });
 });
 
