@@ -11,7 +11,7 @@ export class FrameMetrics {
   private sampleCount = 0;
   private writeIndex = 0;
 
-  add(deltaSeconds: number): void {
+  recordFrame(deltaSeconds: number): void {
     if (deltaSeconds <= 0 || deltaSeconds > MAX_VALID_DELTA_SECONDS) return;
     this.samples[this.writeIndex] = deltaSeconds;
     this.writeIndex = (this.writeIndex + 1) % SAMPLE_CAPACITY;

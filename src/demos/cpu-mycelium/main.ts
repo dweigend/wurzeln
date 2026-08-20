@@ -19,8 +19,8 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { MyceliumView } from './rendering/mycelium-view.ts';
-import { MyceliumSimulation } from './simulation/mycelium-simulation.ts';
+import { MyceliumSimulation } from '../../lib/mycelium-simulation.ts';
+import { MyceliumView } from './mycelium-view.ts';
 
 const INITIAL_SEED = 20_260_819;
 const MAX_PIXEL_RATIO = 2;
@@ -147,7 +147,7 @@ function disposeRuntime(
   window.removeEventListener('resize', handlers.resize);
   runtime.timer.dispose();
   runtime.controls.dispose();
-  runtime.view.dispose(runtime.scene);
+  runtime.view.dispose();
   runtime.renderer.dispose();
 }
 

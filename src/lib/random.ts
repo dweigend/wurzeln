@@ -1,6 +1,6 @@
 /**
- * Deterministic random source shared by landscape placement generators.
- * It intentionally exposes only the next normalized value.
+ * Deterministic random source shared by simulation and generation modules.
+ * It owns only the seed state and exposes the next normalized value.
  */
 
 export function createRandom(seed: number): () => number {

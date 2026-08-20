@@ -3,22 +3,15 @@
  * The generic graph builder then derives one connected, reinforced network.
  */
 
-import {
-  generateNetworkFromPoints,
-  type GeneratedNetwork,
-} from '../../procedural-network/network/network-generator.ts';
-import { createRandom } from '../generation/random.ts';
+import { createNetwork } from '../../../lib/network-generator.ts';
+import { createRandom } from '../../../lib/random.ts';
+import type { GeneratedNetwork } from '../../../lib/settings.ts';
 import { sampleHeight, type HeightField } from '../terrain/height-field.ts';
 import type { TreePlacement } from '../trees/tree-placement.ts';
 
 const ROOT_DEPTH = 0.02;
 const MINIMUM_DEPTH = 0.35;
 const DEPTH_RATIO = 0.13;
-
-export type SubsurfaceNetwork = {
-  network: GeneratedNetwork;
-  resourcePointIndices: number[];
-};
 
 type PointCoordinates = {
   x: number;
@@ -31,7 +24,7 @@ export function createSubsurfaceNetwork(
   trees: readonly TreePlacement[],
   requestedPointCount: number,
   seed: number,
-): SubsurfaceNetwork {
+): GeneratedNetwork {
   const pointCount = Math.max(trees.length, requestedPointCount);
   const points = new Float32Array(pointCount * 3);
   const resources = trees.map((tree, index) => {
@@ -40,16 +33,14 @@ export function createSubsurfaceNetwork(
   });
   writeUndergroundPoints(field, points, trees.length, seed);
 
-  return {
-    network: generateNetworkFromPoints({
-      seed,
-      points,
-      resourcePointIndices: resources,
-      minimumRadius: 0.008,
-      radiusVariation: 0.006,
-    }),
+  return createNetwork({
+    kind: 'points',
+    seed,
+    points,
     resourcePointIndices: resources,
-  };
+    minimumRadius: 0.008,
+    radiusVariation: 0.006,
+  });
 }
 
 function writeUndergroundPoints(

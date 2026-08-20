@@ -17,14 +17,13 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
-import { FrameMetrics } from './frame-metrics.ts';
+import { FrameMetrics } from '../../lib/frame-metrics.ts';
+import { createNetwork } from '../../lib/network-generator.ts';
 import {
-  generateNetwork,
   type GeneratedNetwork,
-  MAX_POINT_COUNT,
-  MIN_POINT_COUNT,
-} from './network/network-generator.ts';
-import { ProceduralNetworkView } from './rendering/procedural-network-view.ts';
+  VOLUME_POINT_COUNT_LIMITS,
+} from '../../lib/settings.ts';
+import { ProceduralNetworkView } from './procedural-network-view.ts';
 
 const INITIAL_SEED = 20_260_820;
 const MAX_PIXEL_RATIO = 1.5;
@@ -148,7 +147,7 @@ function renderFrame(runtime: DemoRuntime, timeMilliseconds: number): void {
   runtime.view.update(runtime.elapsedSeconds);
   runtime.controls.update();
   runtime.renderer.render(runtime.scene, runtime.camera);
-  runtime.metrics.add(deltaSeconds);
+  runtime.metrics.recordFrame(deltaSeconds);
   runtime.statsElapsedSeconds += deltaSeconds;
   if (runtime.statsElapsedSeconds < STATS_REFRESH_SECONDS) return;
   runtime.statsElapsedSeconds = 0;
@@ -176,24 +175,26 @@ function generateTimedNetwork(
   pointCount: number,
 ): { network: GeneratedNetwork; milliseconds: number } {
   const startedAt = performance.now();
-  const network = generateNetwork({ seed, pointCount });
+  const network = createNetwork({ kind: 'volume', seed, pointCount });
   return { network, milliseconds: performance.now() - startedAt };
 }
 
 function updateVolume(runtime: DemoRuntime): void {
-  const volumeScale = Number(runtime.elements.volumeSlider.value);
-  runtime.elements.volumeValue.value = `${formatNumber(volumeScale)} m`;
-  runtime.view.setVolumeScale(volumeScale);
-  fitCameraToVolume(runtime, volumeScale);
+  const volumeSizeMeters = Number(runtime.elements.volumeSlider.value);
+  runtime.elements.volumeValue.value = `${formatNumber(volumeSizeMeters)} m`;
+  runtime.view.setVolumeSizeMeters(volumeSizeMeters);
+  fitCameraToVolume(runtime, volumeSizeMeters);
 }
 
-function fitCameraToVolume(runtime: DemoRuntime, volumeScale: number): void {
+function fitCameraToVolume(runtime: DemoRuntime, volumeSizeMeters: number): void {
   const direction = runtime.camera.position.clone().sub(runtime.controls.target);
   if (direction.lengthSq() === 0) direction.copy(new Vector3(1, 0.72, 1));
   direction.normalize();
-  runtime.camera.position.copy(runtime.controls.target).addScaledVector(direction, volumeScale * 1.65);
-  runtime.controls.minDistance = volumeScale * 0.55;
-  runtime.controls.maxDistance = volumeScale * 4;
+  runtime.camera.position
+    .copy(runtime.controls.target)
+    .addScaledVector(direction, volumeSizeMeters * 1.65);
+  runtime.controls.minDistance = volumeSizeMeters * 0.55;
+  runtime.controls.maxDistance = volumeSizeMeters * 4;
   runtime.controls.update();
 }
 
@@ -211,7 +212,7 @@ function updateStats(runtime: DemoRuntime): void {
   runtime.elements.p95Value.textContent = `${formatNumber(runtime.metrics.p95Milliseconds)} ms`;
   runtime.elements.hyphaValue.textContent = formatInteger(runtime.view.stats.hyphaCount);
   runtime.elements.cordValue.textContent = formatInteger(
-    runtime.network.reinforcedConnectionCount,
+    runtime.network.reinforcedHyphaCount,
   );
   runtime.elements.triangleValue.textContent = formatInteger(runtime.view.stats.triangleCount);
   runtime.elements.generationValue.textContent = `${formatNumber(runtime.generationMilliseconds)} ms`;
@@ -231,7 +232,7 @@ function disposeRuntime(runtime: DemoRuntime, handlers: DemoHandlers): void {
   removeEventListeners(runtime.elements, handlers);
   runtime.timer.dispose();
   runtime.controls.dispose();
-  runtime.view.dispose(runtime.scene);
+  runtime.view.dispose();
   runtime.renderer.dispose();
   runtime.vrButton.remove();
 }
@@ -316,8 +317,8 @@ function formatNumber(value: number): string {
 
 const pointSlider = document.querySelector<HTMLInputElement>('#point-slider');
 if (pointSlider) {
-  pointSlider.min = String(MIN_POINT_COUNT);
-  pointSlider.max = String(MAX_POINT_COUNT);
+  pointSlider.min = String(VOLUME_POINT_COUNT_LIMITS.minimum);
+  pointSlider.max = String(VOLUME_POINT_COUNT_LIMITS.maximum);
 }
 
 const dispose = start();

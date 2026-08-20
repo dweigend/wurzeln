@@ -16,9 +16,9 @@ import {
   SphereGeometry,
   Vector3,
 } from 'three';
-import type { MyceliumSimulation, NetworkEdge } from '../simulation/mycelium-simulation.ts';
+import type { MyceliumSimulation, NetworkEdge } from '../../lib/mycelium-simulation.ts';
 
-export type MyceliumViewConfig = {
+type MyceliumViewConfig = {
   maxEdges: number;
   maxTips: number;
   radialSegments: number;
@@ -75,8 +75,8 @@ export class MyceliumView {
     this.tipMesh.count = 0;
   }
 
-  dispose(scene: Scene): void {
-    scene.remove(this.group);
+  dispose(): void {
+    this.group.removeFromParent();
     this.edgeMesh.geometry.dispose();
     this.tipMesh.geometry.dispose();
     disposeMaterial(this.edgeMesh.material);

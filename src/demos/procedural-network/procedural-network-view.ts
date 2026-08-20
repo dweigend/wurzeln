@@ -7,11 +7,9 @@
 import {
   BufferGeometry,
   Color,
-  CylinderGeometry,
   Float32BufferAttribute,
   GLSL3,
   Group,
-  InstancedBufferAttribute,
   InstancedBufferGeometry,
   LineSegments,
   Mesh,
@@ -19,7 +17,11 @@ import {
   Scene,
   ShaderMaterial,
 } from 'three';
-import type { GeneratedNetwork } from '../network/network-generator.ts';
+import {
+  createNetworkGeometry,
+  TRIANGLES_PER_HYPHA,
+} from '../../lib/network-geometry.ts';
+import type { GeneratedNetwork } from '../../lib/settings.ts';
 import pointFragmentShader from './shaders/points.frag.glsl?raw';
 import pointVertexShader from './shaders/points.vert.glsl?raw';
 import tendrilFragmentShader from './shaders/tendril.frag.glsl?raw';
@@ -27,32 +29,29 @@ import tendrilVertexShader from './shaders/tendril.vert.glsl?raw';
 import volumeFragmentShader from './shaders/volume.frag.glsl?raw';
 import volumeVertexShader from './shaders/volume.vert.glsl?raw';
 
-const RADIAL_SEGMENTS = 3;
-const LONGITUDINAL_SEGMENTS = 16;
-const TRIANGLES_PER_HYPHA = RADIAL_SEGMENTS * LONGITUDINAL_SEGMENTS * 2;
 const BACKGROUND_COLOR = new Color('#08090b');
 
-export type ProceduralNetworkViewStats = {
+type ProceduralNetworkViewStats = Readonly<{
   hyphaCount: number;
   triangleCount: number;
-};
+}>;
 
 export class ProceduralNetworkView {
   readonly group = new Group();
 
-  private readonly timeUniform = { value: 0 };
-  private readonly volumeScaleUniform = { value: 8 };
+  private readonly timeSecondsUniform = { value: 0 };
+  private readonly volumeSizeMetersUniform = { value: 8 };
   private readonly pixelRatioUniform = { value: 1 };
   private readonly tendrilMaterial = createTendrilMaterial(
-    this.timeUniform,
-    this.volumeScaleUniform,
+    this.timeSecondsUniform,
+    this.volumeSizeMetersUniform,
   );
   private readonly pointMaterial = createPointMaterial(
-    this.timeUniform,
-    this.volumeScaleUniform,
+    this.timeSecondsUniform,
+    this.volumeSizeMetersUniform,
     this.pixelRatioUniform,
   );
-  private readonly volumeMaterial = createVolumeMaterial(this.volumeScaleUniform);
+  private readonly volumeMaterial = createVolumeMaterial(this.volumeSizeMetersUniform);
   private readonly volumeLines = createVolumeLines(this.volumeMaterial);
   private tendrilMesh: Mesh<InstancedBufferGeometry, ShaderMaterial> | undefined;
   private pointMesh: Points<BufferGeometry, ShaderMaterial> | undefined;
@@ -79,19 +78,19 @@ export class ProceduralNetworkView {
   }
 
   update(elapsedSeconds: number): void {
-    this.timeUniform.value = elapsedSeconds;
+    this.timeSecondsUniform.value = elapsedSeconds;
   }
 
-  setVolumeScale(scale: number): void {
-    this.volumeScaleUniform.value = scale;
+  setVolumeSizeMeters(sizeMeters: number): void {
+    this.volumeSizeMetersUniform.value = sizeMeters;
   }
 
   setPixelRatio(pixelRatio: number): void {
     this.pixelRatioUniform.value = pixelRatio;
   }
 
-  dispose(scene: Scene): void {
-    scene.remove(this.group);
+  dispose(): void {
+    this.group.removeFromParent();
     this.removeNetworkGeometry();
     this.volumeLines.geometry.dispose();
     this.tendrilMaterial.dispose();
@@ -114,16 +113,16 @@ export class ProceduralNetworkView {
 }
 
 function createTendrilMaterial(
-  timeUniform: { value: number },
-  volumeScaleUniform: { value: number },
+  timeSecondsUniform: { value: number },
+  volumeSizeMetersUniform: { value: number },
 ): ShaderMaterial {
   return new ShaderMaterial({
     glslVersion: GLSL3,
     vertexShader: tendrilVertexShader,
     fragmentShader: tendrilFragmentShader,
     uniforms: {
-      uTime: timeUniform,
-      uVolumeScale: volumeScaleUniform,
+      uTimeSeconds: timeSecondsUniform,
+      uVolumeSizeMeters: volumeSizeMetersUniform,
       uFogColor: { value: BACKGROUND_COLOR },
       uFogDensity: { value: 0.035 },
     },
@@ -131,8 +130,8 @@ function createTendrilMaterial(
 }
 
 function createPointMaterial(
-  timeUniform: { value: number },
-  volumeScaleUniform: { value: number },
+  timeSecondsUniform: { value: number },
+  volumeSizeMetersUniform: { value: number },
   pixelRatioUniform: { value: number },
 ): ShaderMaterial {
   return new ShaderMaterial({
@@ -140,19 +139,19 @@ function createPointMaterial(
     vertexShader: pointVertexShader,
     fragmentShader: pointFragmentShader,
     uniforms: {
-      uTime: timeUniform,
-      uVolumeScale: volumeScaleUniform,
+      uTimeSeconds: timeSecondsUniform,
+      uVolumeSizeMeters: volumeSizeMetersUniform,
       uPixelRatio: pixelRatioUniform,
     },
   });
 }
 
-function createVolumeMaterial(volumeScaleUniform: { value: number }): ShaderMaterial {
+function createVolumeMaterial(volumeSizeMetersUniform: { value: number }): ShaderMaterial {
   return new ShaderMaterial({
     glslVersion: GLSL3,
     vertexShader: volumeVertexShader,
     fragmentShader: volumeFragmentShader,
-    uniforms: { uVolumeScale: volumeScaleUniform },
+    uniforms: { uVolumeSizeMeters: volumeSizeMetersUniform },
   });
 }
 
@@ -160,29 +159,10 @@ function createTendrilMesh(
   network: GeneratedNetwork,
   material: ShaderMaterial,
 ): Mesh<InstancedBufferGeometry, ShaderMaterial> {
-  const geometry = createTendrilGeometry(network);
+  const geometry = createNetworkGeometry(network);
   const mesh = new Mesh(geometry, material);
   mesh.frustumCulled = false;
   return mesh;
-}
-
-function createTendrilGeometry(network: GeneratedNetwork): InstancedBufferGeometry {
-  const base = new CylinderGeometry(1, 1, 1, RADIAL_SEGMENTS, LONGITUDINAL_SEGMENTS, true);
-  const geometry = new InstancedBufferGeometry();
-  geometry.setIndex(base.getIndex());
-  geometry.setAttribute('position', base.getAttribute('position'));
-  geometry.setAttribute('aStart', new InstancedBufferAttribute(network.starts, 3));
-  geometry.setAttribute('aEnd', new InstancedBufferAttribute(network.ends, 3));
-  geometry.setAttribute('aSeed', new InstancedBufferAttribute(network.seeds, 1));
-  geometry.setAttribute('aStartTime', new InstancedBufferAttribute(network.startTimes, 1));
-  geometry.setAttribute('aDuration', new InstancedBufferAttribute(network.durations, 1));
-  geometry.setAttribute('aRadius', new InstancedBufferAttribute(network.radii, 1));
-  geometry.setAttribute(
-    'aReinforcement',
-    new InstancedBufferAttribute(network.reinforcements, 1),
-  );
-  geometry.instanceCount = network.hyphaCount;
-  return geometry;
 }
 
 function createPointMesh(

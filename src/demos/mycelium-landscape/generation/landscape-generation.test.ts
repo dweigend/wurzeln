@@ -23,9 +23,9 @@ describe('landscape generation', () => {
   test('places roots and network points below the terrain surface', () => {
     const field = createHeightField({ size: 20, seed: 73, resolution: 33 });
     const trees = createTreePlacements(field, 12, 74);
-    const { network, resourcePointIndices } = createSubsurfaceNetwork(field, trees, 128, 75);
+    const network = createSubsurfaceNetwork(field, trees, 128, 75);
 
-    expect(resourcePointIndices).toHaveLength(trees.length);
+    expect(network.points.length / 3).toBe(128);
     for (let point = 0; point < network.points.length / 3; point += 1) {
       const offset = point * 3;
       const x = network.points[offset] ?? 0;

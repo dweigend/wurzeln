@@ -3,7 +3,7 @@
  * Placements also define the resource origins for the underground network.
  */
 
-import { createRandom } from '../generation/random.ts';
+import { createRandom } from '../../../lib/random.ts';
 import { sampleHeight, sampleSlope, type HeightField } from '../terrain/height-field.ts';
 
 const EDGE_MARGIN_RATIO = 0.08;

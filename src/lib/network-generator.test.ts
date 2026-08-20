@@ -4,16 +4,13 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import {
-  generateNetwork,
-  generateNetworkFromPoints,
-  MAX_POINT_COUNT,
-} from './network-generator.ts';
+import { createNetwork } from './network-generator.ts';
+import { VOLUME_POINT_COUNT_LIMITS } from './settings.ts';
 
-describe('generateNetwork', () => {
+describe('createNetwork', () => {
   test('is deterministic and remains inside the normalized volume', () => {
-    const first = generateNetwork({ seed: 42, pointCount: 128 });
-    const second = generateNetwork({ seed: 42, pointCount: 128 });
+    const first = createNetwork({ kind: 'volume', seed: 42, pointCount: 128 });
+    const second = createNetwork({ kind: 'volume', seed: 42, pointCount: 128 });
 
     expect(first.points).toEqual(second.points);
     expect(first.connections).toEqual(second.connections);
@@ -22,31 +19,37 @@ describe('generateNetwork', () => {
   });
 
   test('connects every generated point', () => {
-    const network = generateNetwork({ seed: 73, pointCount: 256 });
+    const network = createNetwork({ kind: 'volume', seed: 73, pointCount: 256 });
     expect(countConnectedPoints(network.points.length / 3, network.connections)).toBe(256);
-    expect(network.connectionCount).toBeGreaterThanOrEqual(255);
-    expect(network.hyphaCount).toBe(network.connectionCount);
+    expect(network.hyphaCount).toBeGreaterThanOrEqual(255);
+    expect(network.hyphaCount).toBe(network.connections.length / 2);
   });
 
   test('derives a continuous transport hierarchy from the same graph', () => {
-    const network = generateNetwork({ seed: 84, pointCount: 512 });
+    const network = createNetwork({ kind: 'volume', seed: 84, pointCount: 512 });
     const distinctWeights = new Set(
       Array.from(network.reinforcements, (weight) => weight.toFixed(3)),
     );
 
-    expect(network.reinforcements.length).toBe(network.connectionCount);
+    expect(network.reinforcements.length).toBe(network.hyphaCount);
     expect(Math.min(...network.reinforcements)).toBeGreaterThanOrEqual(0);
     expect(Math.max(...network.reinforcements)).toBeLessThanOrEqual(1);
     expect(distinctWeights.size).toBeGreaterThan(4);
-    expect(network.reinforcedConnectionCount).toBeGreaterThan(0);
-    expect(network.reinforcedConnectionCount).toBeLessThan(network.connectionCount);
+    expect(network.reinforcedHyphaCount).toBeGreaterThan(0);
+    expect(network.reinforcedHyphaCount).toBeLessThan(network.hyphaCount);
   });
 
   test('supports the requested 2,000-point upper limit', () => {
-    const network = generateNetwork({ seed: 91, pointCount: MAX_POINT_COUNT });
-    expect(network.points.length).toBe(MAX_POINT_COUNT * 3);
+    const network = createNetwork({
+      kind: 'volume',
+      seed: 91,
+      pointCount: VOLUME_POINT_COUNT_LIMITS.maximum,
+    });
+    expect(network.points.length).toBe(VOLUME_POINT_COUNT_LIMITS.maximum * 3);
     expect(network.hyphaCount).toBe(network.connections.length / 2);
-    expect(countConnectedPoints(MAX_POINT_COUNT, network.connections)).toBe(MAX_POINT_COUNT);
+    expect(
+      countConnectedPoints(VOLUME_POINT_COUNT_LIMITS.maximum, network.connections),
+    ).toBe(VOLUME_POINT_COUNT_LIMITS.maximum);
   });
 
   test('accepts explicit resource points for landscape networks', () => {
@@ -56,7 +59,8 @@ describe('generateNetwork', () => {
       1, 0, 0,
       0, 0, 1,
     ]);
-    const network = generateNetworkFromPoints({
+    const network = createNetwork({
+      kind: 'points',
       seed: 12,
       points,
       resourcePointIndices: [0, 2],

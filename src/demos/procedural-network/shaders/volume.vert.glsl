@@ -3,8 +3,8 @@
  * One scale uniform expands the complete experiment without rebuilding data.
  */
 
-uniform float uVolumeScale;
+uniform float uVolumeSizeMeters;
 
 void main() {
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position * uVolumeScale, 1.0);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position * uVolumeSizeMeters, 1.0);
 }

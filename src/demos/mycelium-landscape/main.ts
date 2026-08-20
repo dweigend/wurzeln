@@ -16,8 +16,8 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
-import { FrameMetrics } from '../procedural-network/frame-metrics.ts';
-import type { GeneratedNetwork } from '../procedural-network/network/network-generator.ts';
+import { FrameMetrics } from '../../lib/frame-metrics.ts';
+import type { GeneratedNetwork } from '../../lib/settings.ts';
 import { LandscapeNetworkView } from './network/landscape-network-view.ts';
 import { createSubsurfaceNetwork } from './network/subsurface-network.ts';
 import { createHeightField, type HeightField } from './terrain/height-field.ts';
@@ -71,9 +71,9 @@ type DemoRuntime = {
   generation: number;
   rebuildFrame?: number;
   fitCameraAfterRebuild: boolean;
-  growthTime: number;
+  growthTimeSeconds: number;
   busy: boolean;
-  statsElapsed: number;
+  statsElapsedSeconds: number;
 };
 
 type WorldBuild = {
@@ -129,9 +129,9 @@ function createRuntime(): DemoRuntime {
     seed: INITIAL_SEED,
     generation: 0,
     fitCameraAfterRebuild: false,
-    growthTime: NETWORK_SEQUENCE_SECONDS,
+    growthTimeSeconds: NETWORK_SEQUENCE_SECONDS,
     busy: false,
-    statsElapsed: STATS_REFRESH_SECONDS,
+    statsElapsedSeconds: STATS_REFRESH_SECONDS,
   };
 }
 
@@ -157,10 +157,10 @@ function createNewLandscape(runtime: DemoRuntime): void {
 }
 
 function growNetwork(runtime: DemoRuntime): void {
-  runtime.growthTime = 0;
+  runtime.growthTimeSeconds = 0;
   runtime.elements.networkToggle.checked = true;
   applyLayerVisibility(runtime);
-  runtime.networkView?.setGrowthTime(runtime.growthTime);
+  runtime.networkView?.setGrowthTime(runtime.growthTimeSeconds);
 }
 
 function scheduleWorldRebuild(runtime: DemoRuntime, fitCamera: boolean): void {
@@ -205,7 +205,7 @@ async function generateWorld(runtime: DemoRuntime, size: number): Promise<WorldB
   const treeCount = Number(runtime.elements.treeSlider.value);
   const trees = createTreePlacements(field, treeCount, runtime.seed + 1);
   const pointCount = Number(runtime.elements.pointSlider.value);
-  const network = createSubsurfaceNetwork(field, trees, pointCount, runtime.seed + 2).network;
+  const network = createSubsurfaceNetwork(field, trees, pointCount, runtime.seed + 2);
   const asset = await runtime.treeAsset;
   return { field, trees, network, asset };
 }
@@ -216,7 +216,7 @@ function replaceWorld(runtime: DemoRuntime, build: Readonly<WorldBuild>): void {
   runtime.terrainView = new TerrainView(runtime.scene, build.field);
   runtime.treeView = new TreeView(runtime.scene, build.asset, build.trees);
   runtime.networkView = new LandscapeNetworkView(runtime.scene, build.field, build.network);
-  runtime.networkView.setGrowthTime(runtime.growthTime);
+  runtime.networkView.setGrowthTime(runtime.growthTimeSeconds);
   applyLayerVisibility(runtime);
 }
 
@@ -230,14 +230,17 @@ function applyLayerVisibility(runtime: DemoRuntime): void {
 function renderFrame(runtime: DemoRuntime, timeMilliseconds: number): void {
   runtime.timer.update(timeMilliseconds);
   const deltaSeconds = Math.min(0.1, runtime.timer.getDelta());
-  runtime.growthTime = Math.min(NETWORK_SEQUENCE_SECONDS, runtime.growthTime + deltaSeconds);
-  runtime.networkView?.setGrowthTime(runtime.growthTime);
+  runtime.growthTimeSeconds = Math.min(
+    NETWORK_SEQUENCE_SECONDS,
+    runtime.growthTimeSeconds + deltaSeconds,
+  );
+  runtime.networkView?.setGrowthTime(runtime.growthTimeSeconds);
   runtime.controls.update();
   runtime.renderer.render(runtime.scene, runtime.camera);
-  runtime.metrics.add(deltaSeconds);
-  runtime.statsElapsed += deltaSeconds;
-  if (runtime.statsElapsed < STATS_REFRESH_SECONDS) return;
-  runtime.statsElapsed = 0;
+  runtime.metrics.recordFrame(deltaSeconds);
+  runtime.statsElapsedSeconds += deltaSeconds;
+  if (runtime.statsElapsedSeconds < STATS_REFRESH_SECONDS) return;
+  runtime.statsElapsedSeconds = 0;
   updateStats(runtime);
 }
 
@@ -333,7 +336,7 @@ function resizeRuntime(runtime: DemoRuntime): void {
 function disposeWorld(runtime: DemoRuntime): void {
   runtime.terrainView?.dispose(runtime.scene);
   runtime.treeView?.dispose(runtime.scene);
-  runtime.networkView?.dispose(runtime.scene);
+  runtime.networkView?.dispose();
   runtime.terrainView = undefined;
   runtime.treeView = undefined;
   runtime.networkView = undefined;

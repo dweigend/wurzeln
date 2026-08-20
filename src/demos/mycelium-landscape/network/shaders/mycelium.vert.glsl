@@ -3,15 +3,15 @@
  * An explicit UI action controls growth before transport reinforcement matures.
  */
 
-uniform float uTime;
-uniform float uTerrainSize;
+uniform float uTimeSeconds;
+uniform float uTerrainSizeMeters;
 uniform sampler2D uHeightMap;
 
 in vec3 aStart;
 in vec3 aEnd;
 in float aSeed;
-in float aStartTime;
-in float aDuration;
+in float aStartTimeSeconds;
+in float aDurationSeconds;
 in float aRadius;
 in float aReinforcement;
 
@@ -37,7 +37,7 @@ vec3 sideFor(vec3 direction) {
 }
 
 float terrainHeight(vec2 positionXZ) {
-  vec2 uv = clamp(positionXZ / uTerrainSize + 0.5, 0.0, 1.0);
+  vec2 uv = clamp(positionXZ / uTerrainSizeMeters + 0.5, 0.0, 1.0);
   return texture(uHeightMap, uv).r;
 }
 
@@ -50,7 +50,7 @@ vec3 centerline(float parameter) {
   float envelope = sin(PI * parameter);
   float wave = sin((parameter * (0.8 + hash(aSeed) * 1.2) + hash(aSeed + 2.3)) * PI * 2.0);
   float verticalWave = abs(sin((parameter * 1.4 + hash(aSeed + 7.1)) * PI * 2.0));
-  float amplitude = min(directLength * 0.1, uTerrainSize * 0.018);
+  float amplitude = min(directLength * 0.1, uTerrainSizeMeters * 0.018);
   base.xz += side * wave * amplitude * envelope;
   base.y -= verticalWave * amplitude * 0.45 * envelope;
   base.y = min(base.y, terrainHeight(base.xz) - TERRAIN_COVER);
@@ -69,7 +69,7 @@ float visibleRadius(float parameter, float localAge) {
 
 void main() {
   float parameter = position.y + 0.5;
-  float localAge = (uTime - aStartTime) / max(aDuration, 0.001);
+  float localAge = (uTimeSeconds - aStartTimeSeconds) / max(aDurationSeconds, 0.001);
   float radius = visibleRadius(parameter, localAge);
   float epsilon = 0.0125;
   vec3 tangent = safeDirection(

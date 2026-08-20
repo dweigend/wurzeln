@@ -5,23 +5,24 @@
  */
 
 import { Vector3 } from 'three';
+import { createRandom } from './random.ts';
 
-export type EdgeKind = 'growth' | 'fusion';
+type EdgeKind = 'growth' | 'fusion';
 
-export type NetworkNode = {
+type NetworkNode = Readonly<{
   id: number;
   position: Vector3;
-};
+}>;
 
-export type NetworkEdge = {
+export type NetworkEdge = Readonly<{
   from: number;
   to: number;
   radius: number;
   kind: EdgeKind;
   createdAtSeconds: number;
-};
+}>;
 
-export type GrowthTip = {
+type GrowthTip = {
   id: number;
   nodeId: number;
   lineageId: number;
@@ -31,7 +32,7 @@ export type GrowthTip = {
   active: boolean;
 };
 
-export type MyceliumConfig = {
+type MyceliumConfig = Readonly<{
   seed: number;
   colonyCount: number;
   updatesPerSecond: number;
@@ -57,9 +58,9 @@ export type MyceliumConfig = {
   minimumRadius: number;
   radiusDecayPerStep: number;
   branchRadiusRatio: number;
-};
+}>;
 
-export const DEFAULT_MYCELIUM_CONFIG: Readonly<MyceliumConfig> = Object.freeze({
+const DEFAULT_MYCELIUM_CONFIG: MyceliumConfig = Object.freeze({
   seed: 20_260_819,
   colonyCount: 12,
   updatesPerSecond: 15,
@@ -91,7 +92,7 @@ export class MyceliumSimulation {
   readonly nodes: NetworkNode[] = [];
   readonly edges: NetworkEdge[] = [];
   readonly tips: GrowthTip[] = [];
-  readonly config: Readonly<MyceliumConfig>;
+  readonly config: MyceliumConfig;
 
   fusionCount = 0;
   elapsedSeconds = 0;
@@ -380,14 +381,6 @@ export class MyceliumSimulation {
   private deactivateAllTips(): void {
     for (const tip of this.tips) tip.active = false;
   }
-}
-
-function createRandom(seed: number): () => number {
-  let state = seed >>> 0;
-  return (): number => {
-    state = (1_664_525 * state + 1_013_904_223) >>> 0;
-    return state / 0x1_0000_0000;
-  };
 }
 
 function isFusionCandidate(first: GrowthTip, second: GrowthTip): boolean {

@@ -4,14 +4,14 @@
  * reinforcement or regression without a separate stable-edge category.
  */
 
-uniform float uTime;
-uniform float uVolumeScale;
+uniform float uTimeSeconds;
+uniform float uVolumeSizeMeters;
 
 in vec3 aStart;
 in vec3 aEnd;
 in float aSeed;
-in float aStartTime;
-in float aDuration;
+in float aStartTimeSeconds;
+in float aDurationSeconds;
 in float aRadius;
 in float aReinforcement;
 
@@ -67,7 +67,7 @@ float visibleRadius(float parameter, float localAge) {
 
 void main() {
   float parameter = position.y + 0.5;
-  float localAge = (uTime - aStartTime) / max(aDuration, 0.001);
+  float localAge = (uTimeSeconds - aStartTimeSeconds) / max(aDurationSeconds, 0.001);
   float radius = visibleRadius(parameter, localAge);
   float epsilon = 0.0125;
   vec3 previous = centerline(max(0.0, parameter - epsilon));
@@ -76,7 +76,7 @@ void main() {
   vec3 normal = sideFor(tangent);
   vec3 binormal = safeDirection(cross(normal, tangent));
   vec3 radialOffset = normal * position.x + binormal * position.z;
-  vec3 localPosition = (centerline(parameter) + radialOffset * radius) * uVolumeScale;
+  vec3 localPosition = (centerline(parameter) + radialOffset * radius) * uVolumeSizeMeters;
   vec4 viewPosition = modelViewMatrix * vec4(localPosition, 1.0);
 
   vNormal = normalize(mat3(modelMatrix) * radialOffset);

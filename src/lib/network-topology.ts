@@ -4,12 +4,12 @@
  * reinforced cords without introducing a second connection category.
  */
 
-export type MycelialTopology = {
+type MycelialTopology = Readonly<{
   connections: Uint32Array;
   growthSteps: Int32Array;
   reinforcements: Float32Array;
-  reinforcedConnectionCount: number;
-};
+  reinforcedHyphaCount: number;
+}>;
 
 type Neighbor = {
   node: number;
@@ -52,7 +52,7 @@ export function createMycelialTopology(
     connections,
     growthSteps: growthTree.steps,
     reinforcements,
-    reinforcedConnectionCount: countReinforcedConnections(reinforcements),
+    reinforcedHyphaCount: countReinforcedHyphae(reinforcements),
   };
 }
 
@@ -358,7 +358,7 @@ function normalizeTraffic(traffic: Float64Array): Float32Array {
   );
 }
 
-function countReinforcedConnections(reinforcements: Float32Array): number {
+function countReinforcedHyphae(reinforcements: Float32Array): number {
   let count = 0;
   for (const reinforcement of reinforcements) {
     if (reinforcement >= REINFORCED_THRESHOLD) count += 1;

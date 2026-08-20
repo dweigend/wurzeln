@@ -5,11 +5,9 @@
 
 import {
   ClampToEdgeWrapping,
-  CylinderGeometry,
   DataTexture,
   FloatType,
   GLSL3,
-  InstancedBufferAttribute,
   InstancedBufferGeometry,
   LinearFilter,
   Mesh,
@@ -17,17 +15,13 @@ import {
   Scene,
   ShaderMaterial,
 } from 'three';
-import type { GeneratedNetwork } from '../../procedural-network/network/network-generator.ts';
+import { createNetworkGeometry } from '../../../lib/network-geometry.ts';
+import type { GeneratedNetwork } from '../../../lib/settings.ts';
 import type { HeightField } from '../terrain/height-field.ts';
 import myceliumFragmentShader from './shaders/mycelium.frag.glsl?raw';
 import myceliumVertexShader from './shaders/mycelium.vert.glsl?raw';
 
-const RADIAL_SEGMENTS = 3;
-const LONGITUDINAL_SEGMENTS = 16;
-const TRIANGLES_PER_HYPHA = RADIAL_SEGMENTS * LONGITUDINAL_SEGMENTS * 2;
-
 export class LandscapeNetworkView {
-  readonly triangleCount: number;
   readonly hyphaCount: number;
 
   private readonly heightTexture: DataTexture;
@@ -37,11 +31,10 @@ export class LandscapeNetworkView {
   constructor(scene: Scene, field: Readonly<HeightField>, network: Readonly<GeneratedNetwork>) {
     this.heightTexture = createHeightTexture(field);
     this.material = createMyceliumMaterial(field, this.heightTexture);
-    const geometry = createMyceliumGeometry(network);
+    const geometry = createNetworkGeometry(network);
     this.mesh = new Mesh(geometry, this.material);
     this.mesh.frustumCulled = false;
     this.hyphaCount = network.hyphaCount;
-    this.triangleCount = network.hyphaCount * TRIANGLES_PER_HYPHA;
     scene.add(this.mesh);
   }
 
@@ -49,12 +42,12 @@ export class LandscapeNetworkView {
     this.mesh.visible = visible;
   }
 
-  setGrowthTime(seconds: number): void {
-    this.material.uniforms['uTime']!.value = seconds;
+  setGrowthTime(elapsedSeconds: number): void {
+    this.material.uniforms['uTimeSeconds']!.value = elapsedSeconds;
   }
 
-  dispose(scene: Scene): void {
-    scene.remove(this.mesh);
+  dispose(): void {
+    this.mesh.removeFromParent();
     this.mesh.geometry.dispose();
     this.material.dispose();
     this.heightTexture.dispose();
@@ -87,26 +80,9 @@ function createMyceliumMaterial(
     vertexShader: myceliumVertexShader,
     fragmentShader: myceliumFragmentShader,
     uniforms: {
-      uTime: { value: 20 },
-      uTerrainSize: { value: field.size },
+      uTimeSeconds: { value: 20 },
+      uTerrainSizeMeters: { value: field.size },
       uHeightMap: { value: heightTexture },
     },
   });
-}
-
-function createMyceliumGeometry(network: Readonly<GeneratedNetwork>): InstancedBufferGeometry {
-  const base = new CylinderGeometry(1, 1, 1, RADIAL_SEGMENTS, LONGITUDINAL_SEGMENTS, true);
-  const geometry = new InstancedBufferGeometry();
-  geometry.setIndex(base.getIndex());
-  geometry.setAttribute('position', base.getAttribute('position'));
-  geometry.setAttribute('aStart', new InstancedBufferAttribute(network.starts, 3));
-  geometry.setAttribute('aEnd', new InstancedBufferAttribute(network.ends, 3));
-  geometry.setAttribute('aSeed', new InstancedBufferAttribute(network.seeds, 1));
-  geometry.setAttribute('aStartTime', new InstancedBufferAttribute(network.startTimes, 1));
-  geometry.setAttribute('aDuration', new InstancedBufferAttribute(network.durations, 1));
-  geometry.setAttribute('aRadius', new InstancedBufferAttribute(network.radii, 1));
-  geometry.setAttribute('aReinforcement', new InstancedBufferAttribute(network.reinforcements, 1));
-  geometry.instanceCount = network.hyphaCount;
-  base.dispose();
-  return geometry;
 }
