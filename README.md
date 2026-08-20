@@ -13,11 +13,28 @@ bun run dev
 
 Open <http://127.0.0.1:5173/> for the demo index.
 
-| Route | Purpose |
-| --- | --- |
-| `/demos/cpu-mycelium/` | Deterministic CPU branching and stable tip fusion |
-| `/demos/procedural-network/` | WebGL2 volume network with GPU growth animation |
-| `/demos/mycelium-landscape/` | WebGL2 terrain, instanced trees, and underground mycelium |
+## Demos
+
+### CPU mycelium
+
+`/demos/cpu-mycelium/` shows deterministic CPU branching and stable tip
+fusion. Edges and active tips use bounded instanced GPU buffers.
+
+![CPU mycelium demo with branching network and live statistics](docs/screenshots/cpu-mycelium.png)
+
+### Procedural network
+
+`/demos/procedural-network/` creates a dense WebGL2 volume network and animates
+growth and reinforcement on the GPU.
+
+![Procedural WebGL2 network inside its volume boundary](docs/screenshots/procedural-network.png)
+
+### Mycelium landscape
+
+`/demos/mycelium-landscape/` combines WebGL2 terrain, instanced trees, and an
+underground network generated from the same height-field data.
+
+![Mycelium landscape with terrain, trees, underground network, and layer controls](docs/screenshots/mycelium-landscape.png)
 
 The two WebGL2 demos retain the Three.js WebXR button. WebXR requires a
 compatible browser, device, and secure context or localhost.
