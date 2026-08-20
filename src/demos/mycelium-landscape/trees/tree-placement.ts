@@ -10,13 +10,13 @@ const EDGE_MARGIN_RATIO = 0.08;
 const MAX_SLOPE = 0.7;
 const ATTEMPTS_PER_TREE = 40;
 
-export type TreePlacement = {
+export type TreePlacement = Readonly<{
   x: number;
   y: number;
   z: number;
   rotation: number;
   scale: number;
-};
+}>;
 
 type PlacementCandidate = {
   field: Readonly<HeightField>;
@@ -40,8 +40,8 @@ export function createTreePlacements(
 ): TreePlacement[] {
   const random = createRandom(seed);
   const placements: TreePlacement[] = [];
-  const limit = field.size * (0.5 - EDGE_MARGIN_RATIO);
-  const minimumDistance = (field.size / Math.sqrt(Math.max(1, count))) * 0.45;
+  const limit = field.sizeMeters * (0.5 - EDGE_MARGIN_RATIO);
+  const minimumDistance = (field.sizeMeters / Math.sqrt(Math.max(1, count))) * 0.45;
 
   for (let attempt = 0; attempt < count * ATTEMPTS_PER_TREE; attempt += 1) {
     if (placements.length >= count) break;

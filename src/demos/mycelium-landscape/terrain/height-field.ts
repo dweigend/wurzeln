@@ -5,35 +5,35 @@
 
 import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
 
-export const TERRAIN_RESOLUTION = 97;
+const TERRAIN_RESOLUTION = 97;
 
 const OCTAVE_COUNT = 4;
 const BASE_FREQUENCY = 0.045;
 const HEIGHT_RATIO = 0.12;
 
-export type HeightField = {
-  size: number;
+export type HeightField = Readonly<{
+  sizeMeters: number;
   resolution: number;
   heights: Float32Array;
   minimumHeight: number;
   maximumHeight: number;
-};
+}>;
 
-export type HeightFieldOptions = {
-  size: number;
+type HeightFieldOptions = Readonly<{
+  sizeMeters: number;
   seed: number;
   resolution?: number;
-};
+}>;
 
 type TerrainHeightContext = {
   noise: ImprovedNoise;
   x: number;
   z: number;
-  size: number;
+  sizeMeters: number;
   seed: number;
 };
 
-export function createHeightField(options: Readonly<HeightFieldOptions>): HeightField {
+export function createHeightField(options: HeightFieldOptions): HeightField {
   const resolution = options.resolution ?? TERRAIN_RESOLUTION;
   const heights = new Float32Array(resolution * resolution);
   const noise = new ImprovedNoise();
@@ -42,13 +42,13 @@ export function createHeightField(options: Readonly<HeightFieldOptions>): Height
 
   for (let z = 0; z < resolution; z += 1) {
     for (let x = 0; x < resolution; x += 1) {
-      const worldX = gridToWorld(x, resolution, options.size);
-      const worldZ = gridToWorld(z, resolution, options.size);
+      const worldX = gridToWorld(x, resolution, options.sizeMeters);
+      const worldZ = gridToWorld(z, resolution, options.sizeMeters);
       const height = terrainHeight({
         noise,
         x: worldX,
         z: worldZ,
-        size: options.size,
+        sizeMeters: options.sizeMeters,
         seed: options.seed,
       });
       heights[z * resolution + x] = height;
@@ -57,7 +57,13 @@ export function createHeightField(options: Readonly<HeightFieldOptions>): Height
     }
   }
 
-  return { size: options.size, resolution, heights, minimumHeight, maximumHeight };
+  return {
+    sizeMeters: options.sizeMeters,
+    resolution,
+    heights,
+    minimumHeight,
+    maximumHeight,
+  };
 }
 
 export function sampleHeight(field: Readonly<HeightField>, x: number, z: number): number {
@@ -75,7 +81,7 @@ export function sampleHeight(field: Readonly<HeightField>, x: number, z: number)
 }
 
 export function sampleSlope(field: Readonly<HeightField>, x: number, z: number): number {
-  const step = field.size / (field.resolution - 1);
+  const step = field.sizeMeters / (field.resolution - 1);
   const dx = sampleHeight(field, x + step, z) - sampleHeight(field, x - step, z);
   const dz = sampleHeight(field, x, z + step) - sampleHeight(field, x, z - step);
   return Math.hypot(dx, dz) / (step * 2);
@@ -95,15 +101,15 @@ function terrainHeight(context: Readonly<TerrainHeightContext>): number {
     amplitude *= 0.5;
     frequency *= 2;
   }
-  return (value / weight) * context.size * HEIGHT_RATIO;
+  return (value / weight) * context.sizeMeters * HEIGHT_RATIO;
 }
 
-function gridToWorld(index: number, resolution: number, size: number): number {
-  return (index / (resolution - 1) - 0.5) * size;
+function gridToWorld(index: number, resolution: number, sizeMeters: number): number {
+  return (index / (resolution - 1) - 0.5) * sizeMeters;
 }
 
 function worldToGrid(value: number, field: Readonly<HeightField>): number {
-  const normalized = value / field.size + 0.5;
+  const normalized = value / field.sizeMeters + 0.5;
   return Math.min(field.resolution - 1, Math.max(0, normalized * (field.resolution - 1)));
 }
 

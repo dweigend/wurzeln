@@ -4,34 +4,13 @@
  * Three.js canvas rendering.
  */
 
+@import '../../lib/demo-base.css';
+
 :root {
   color: #e8fff6;
   background: #07110f;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  overflow: hidden;
-}
-
-button {
-  font: inherit;
-}
-
-#scene {
-  display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: none;
 }
 
 .panel {

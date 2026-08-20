@@ -1,153 +1,92 @@
 /**
- * Live layer controls and regeneration lifecycle for the landscape mycelium MVP.
- * Sliders rebuild immutable world data; render frames only draw and collect metrics.
+ * Coordinates landscape generation, layer adapters, and the WebXR render loop.
+ * World data is replaced atomically; scene, UI, and views own their resources
+ * while this module owns request ordering and mutable demo state.
  */
 
 import './styles.css';
 
-import {
-  Color,
-  PerspectiveCamera,
-  Scene,
-  SRGBColorSpace,
-  Timer,
-  Vector3,
-  WebGLRenderer,
-} from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { Timer } from 'three';
 import { FrameMetrics } from '../../lib/frame-metrics.ts';
 import type { GeneratedNetwork } from '../../lib/settings.ts';
 import { LandscapeNetworkView } from './network/landscape-network-view.ts';
 import { createSubsurfaceNetwork } from './network/subsurface-network.ts';
+import { createScene, type LandscapeScene } from './scene.ts';
 import { createHeightField, type HeightField } from './terrain/height-field.ts';
 import { TerrainView } from './terrain/terrain-view.ts';
 import { loadTreeAsset, type TreeAsset } from './trees/tree-asset.ts';
 import { createTreePlacements, type TreePlacement } from './trees/tree-placement.ts';
 import { TreeView } from './trees/tree-view.ts';
+import { createDemoUi, type LandscapeUi } from './ui.ts';
 
 const INITIAL_SEED = 20_260_820;
 const STATS_REFRESH_SECONDS = 0.25;
-const MAX_PIXEL_RATIO = 1.35;
 const NETWORK_SEQUENCE_SECONDS = 20;
 
-type DemoElements = {
-  canvas: HTMLCanvasElement;
-  sizeSlider: HTMLInputElement;
-  sizeValue: HTMLOutputElement;
-  treeSlider: HTMLInputElement;
-  treeValue: HTMLOutputElement;
-  pointSlider: HTMLInputElement;
-  pointValue: HTMLOutputElement;
-  terrainToggle: HTMLInputElement;
-  treeToggle: HTMLInputElement;
-  subsurfaceToggle: HTMLInputElement;
-  networkToggle: HTMLInputElement;
-  growNetworkButton: HTMLButtonElement;
-  newLandscapeButton: HTMLButtonElement;
-  statusValue: HTMLElement;
-  fpsValue: HTMLElement;
-  p95Value: HTMLElement;
-  treeCountValue: HTMLElement;
-  hyphaValue: HTMLElement;
-  triangleValue: HTMLElement;
-};
-
 type DemoRuntime = {
-  elements: DemoElements;
-  scene: Scene;
-  camera: PerspectiveCamera;
-  renderer: WebGLRenderer;
-  controls: OrbitControls;
+  ui: LandscapeUi;
+  sceneContext: LandscapeScene;
   timer: Timer;
   metrics: FrameMetrics;
-  vrButton: HTMLElement;
   treeAsset: Promise<TreeAsset>;
   terrainView?: TerrainView;
   treeView?: TreeView;
   networkView?: LandscapeNetworkView;
-  trees: TreePlacement[];
+  trees: readonly TreePlacement[];
   seed: number;
   generation: number;
   rebuildFrame?: number;
   fitCameraAfterRebuild: boolean;
   growthTimeSeconds: number;
-  busy: boolean;
   statsElapsedSeconds: number;
 };
 
-type WorldBuild = {
+type WorldBuild = Readonly<{
   field: HeightField;
-  trees: TreePlacement[];
+  trees: readonly TreePlacement[];
   network: GeneratedNetwork;
   asset: TreeAsset;
-};
-
-type DemoHandlers = {
-  updateSize: () => void;
-  updateContents: () => void;
-  updateLayers: () => void;
-  growNetwork: () => void;
-  createNewLandscape: () => void;
-  resize: () => void;
-};
+}>;
 
 function start(): () => void {
-  const runtime = createRuntime();
-  const handlers = createHandlers(runtime);
-  addEventListeners(runtime.elements, handlers);
-  resizeRuntime(runtime);
-  updateOutputs(runtime.elements);
+  let runtime: DemoRuntime;
+  const ui = createDemoUi({
+    onSizeChange: (): void => updateConfiguration(runtime, true),
+    onContentsChange: (): void => updateConfiguration(runtime, false),
+    onLayersChange: (): void => applyLayerVisibility(runtime),
+    onGrowNetwork: (): void => growNetwork(runtime),
+    onNewLandscape: (): void => createNewLandscape(runtime),
+  });
+  runtime = createRuntime(ui);
+  const resize = (): void => runtime.sceneContext.resize();
+  window.addEventListener('resize', resize);
+  resize();
   scheduleWorldRebuild(runtime, true);
-  runtime.renderer.setAnimationLoop((time) => renderFrame(runtime, time));
-  return (): void => disposeRuntime(runtime, handlers);
+  runtime.sceneContext.renderer.setAnimationLoop((timeMilliseconds) => {
+    renderFrame(runtime, timeMilliseconds);
+  });
+  return (): void => disposeRuntime(runtime, resize);
 }
 
-function createRuntime(): DemoRuntime {
-  const elements = getDemoElements();
-  const scene = new Scene();
-  scene.background = new Color('#0e0913');
-  const camera = createCamera();
-  const renderer = createRenderer(elements.canvas);
-  const controls = createControls(camera, elements.canvas);
+function createRuntime(ui: LandscapeUi): DemoRuntime {
   const timer = new Timer();
   timer.connect(document);
-  const vrButton = VRButton.createButton(renderer);
-  document.body.appendChild(vrButton);
-
   return {
-    elements,
-    scene,
-    camera,
-    renderer,
-    controls,
+    ui,
+    sceneContext: createScene(ui.canvas),
     timer,
     metrics: new FrameMetrics(),
-    vrButton,
     treeAsset: loadTreeAsset(),
     trees: [],
     seed: INITIAL_SEED,
     generation: 0,
     fitCameraAfterRebuild: false,
     growthTimeSeconds: NETWORK_SEQUENCE_SECONDS,
-    busy: false,
     statsElapsedSeconds: STATS_REFRESH_SECONDS,
   };
 }
 
-function createHandlers(runtime: DemoRuntime): DemoHandlers {
-  return {
-    updateSize: (): void => updateConfiguration(runtime, true),
-    updateContents: (): void => updateConfiguration(runtime, false),
-    updateLayers: (): void => applyLayerVisibility(runtime),
-    growNetwork: (): void => growNetwork(runtime),
-    createNewLandscape: (): void => createNewLandscape(runtime),
-    resize: (): void => resizeRuntime(runtime),
-  };
-}
-
 function updateConfiguration(runtime: DemoRuntime, fitCamera: boolean): void {
-  updateOutputs(runtime.elements);
   scheduleWorldRebuild(runtime, fitCamera);
 }
 
@@ -158,7 +97,7 @@ function createNewLandscape(runtime: DemoRuntime): void {
 
 function growNetwork(runtime: DemoRuntime): void {
   runtime.growthTimeSeconds = 0;
-  runtime.elements.networkToggle.checked = true;
+  runtime.ui.showNetwork();
   applyLayerVisibility(runtime);
   runtime.networkView?.setGrowthTime(runtime.growthTimeSeconds);
 }
@@ -167,64 +106,72 @@ function scheduleWorldRebuild(runtime: DemoRuntime, fitCamera: boolean): void {
   runtime.generation += 1;
   runtime.fitCameraAfterRebuild ||= fitCamera;
   if (runtime.rebuildFrame !== undefined) return;
-  runtime.rebuildFrame = requestAnimationFrame(() => {
-    runtime.rebuildFrame = undefined;
-    const shouldFitCamera = runtime.fitCameraAfterRebuild;
-    runtime.fitCameraAfterRebuild = false;
-    void rebuildWorld(runtime, shouldFitCamera);
-  });
+  runtime.rebuildFrame = requestAnimationFrame(() => runScheduledRebuild(runtime));
+}
+
+function runScheduledRebuild(runtime: DemoRuntime): void {
+  runtime.rebuildFrame = undefined;
+  const shouldFitCamera = runtime.fitCameraAfterRebuild;
+  runtime.fitCameraAfterRebuild = false;
+  void rebuildWorld(runtime, shouldFitCamera);
 }
 
 async function rebuildWorld(runtime: DemoRuntime, shouldFitCamera: boolean): Promise<void> {
-  const generation = runtime.generation + 1;
-  runtime.generation = generation;
-  runtime.busy = true;
-  updateStatus(runtime);
-  const size = Number(runtime.elements.sizeSlider.value);
-  let failed = false;
+  const requestId = runtime.generation + 1;
+  runtime.generation = requestId;
+  runtime.ui.setStatus('Aktualisiere …');
 
   try {
-    const build = await generateWorld(runtime, size);
-    if (generation !== runtime.generation) return;
+    const build = await createWorldBuild(runtime);
+    if (requestId !== runtime.generation) return;
     replaceWorld(runtime, build);
-    if (shouldFitCamera) fitCamera(runtime, size);
+    if (shouldFitCamera) runtime.sceneContext.fitToLandscape(build.field.sizeMeters);
+    finishWorldRebuild(runtime, 'Live');
   } catch (error) {
-    if (generation !== runtime.generation) return;
-    failed = true;
+    if (requestId !== runtime.generation) return;
     console.error(error);
-  } finally {
-    if (generation !== runtime.generation) return;
-    runtime.busy = false;
-    runtime.elements.statusValue.textContent = failed ? 'Fehler' : 'Live';
-    updateStats(runtime);
+    finishWorldRebuild(runtime, 'Fehler');
   }
 }
 
-async function generateWorld(runtime: DemoRuntime, size: number): Promise<WorldBuild> {
-  const field = createHeightField({ size, seed: runtime.seed });
-  const treeCount = Number(runtime.elements.treeSlider.value);
-  const trees = createTreePlacements(field, treeCount, runtime.seed + 1);
-  const pointCount = Number(runtime.elements.pointSlider.value);
-  const network = createSubsurfaceNetwork(field, trees, pointCount, runtime.seed + 2);
-  const asset = await runtime.treeAsset;
-  return { field, trees, network, asset };
+async function createWorldBuild(runtime: DemoRuntime): Promise<WorldBuild> {
+  const settings = runtime.ui.getSettings();
+  const field = createHeightField({ sizeMeters: settings.sizeMeters, seed: runtime.seed });
+  const trees = createTreePlacements(field, settings.treeCount, runtime.seed + 1);
+  const network = createSubsurfaceNetwork(
+    field,
+    trees,
+    settings.pointCount,
+    runtime.seed + 2,
+  );
+  return { field, trees, network, asset: await runtime.treeAsset };
 }
 
-function replaceWorld(runtime: DemoRuntime, build: Readonly<WorldBuild>): void {
+function finishWorldRebuild(runtime: DemoRuntime, status: 'Fehler' | 'Live'): void {
+  runtime.ui.setStatus(status);
+  updateStats(runtime);
+}
+
+function replaceWorld(runtime: DemoRuntime, build: WorldBuild): void {
   disposeWorld(runtime);
   runtime.trees = build.trees;
-  runtime.terrainView = new TerrainView(runtime.scene, build.field);
-  runtime.treeView = new TreeView(runtime.scene, build.asset, build.trees);
-  runtime.networkView = new LandscapeNetworkView(runtime.scene, build.field, build.network);
+  runtime.terrainView = new TerrainView(runtime.sceneContext.scene, build.field);
+  runtime.treeView = new TreeView(runtime.sceneContext.scene, build.asset, build.trees);
+  runtime.networkView = new LandscapeNetworkView(
+    runtime.sceneContext.scene,
+    build.field,
+    build.network,
+  );
   runtime.networkView.setGrowthTime(runtime.growthTimeSeconds);
   applyLayerVisibility(runtime);
 }
 
 function applyLayerVisibility(runtime: DemoRuntime): void {
-  runtime.terrainView?.setVisible(runtime.elements.terrainToggle.checked);
-  runtime.terrainView?.setSubsurfaceVisible(runtime.elements.subsurfaceToggle.checked);
-  runtime.treeView?.setVisible(runtime.elements.treeToggle.checked);
-  runtime.networkView?.setVisible(runtime.elements.networkToggle.checked);
+  const visibility = runtime.ui.getLayerVisibility();
+  runtime.terrainView?.setVisible(visibility.terrain);
+  runtime.terrainView?.setSubsurfaceVisible(visibility.subsurface);
+  runtime.treeView?.setVisible(visibility.trees);
+  runtime.networkView?.setVisible(visibility.network);
 }
 
 function renderFrame(runtime: DemoRuntime, timeMilliseconds: number): void {
@@ -235,8 +182,8 @@ function renderFrame(runtime: DemoRuntime, timeMilliseconds: number): void {
     runtime.growthTimeSeconds + deltaSeconds,
   );
   runtime.networkView?.setGrowthTime(runtime.growthTimeSeconds);
-  runtime.controls.update();
-  runtime.renderer.render(runtime.scene, runtime.camera);
+  runtime.sceneContext.controls.update();
+  runtime.sceneContext.renderer.render(runtime.sceneContext.scene, runtime.sceneContext.camera);
   runtime.metrics.recordFrame(deltaSeconds);
   runtime.statsElapsedSeconds += deltaSeconds;
   if (runtime.statsElapsedSeconds < STATS_REFRESH_SECONDS) return;
@@ -244,154 +191,38 @@ function renderFrame(runtime: DemoRuntime, timeMilliseconds: number): void {
   updateStats(runtime);
 }
 
-function updateStatus(runtime: Readonly<DemoRuntime>): void {
-  runtime.elements.statusValue.textContent = runtime.busy ? 'Aktualisiere …' : 'Live';
-}
-
-function updateStats(runtime: Readonly<DemoRuntime>): void {
-  runtime.elements.fpsValue.textContent = formatNumber(runtime.metrics.averageFramesPerSecond);
-  runtime.elements.p95Value.textContent = `${formatNumber(runtime.metrics.p95Milliseconds)} ms`;
-  runtime.elements.treeCountValue.textContent = formatInteger(runtime.trees.length);
-  runtime.elements.hyphaValue.textContent = formatInteger(runtime.networkView?.hyphaCount ?? 0);
-  runtime.elements.triangleValue.textContent = formatInteger(
-    runtime.renderer.info.render.triangles,
-  );
-}
-
-function updateOutputs(elements: Readonly<DemoElements>): void {
-  elements.sizeValue.value = `${elements.sizeSlider.value} m`;
-  elements.treeValue.value = elements.treeSlider.value;
-  elements.pointValue.value = elements.pointSlider.value;
-}
-
-function addEventListeners(elements: DemoElements, handlers: DemoHandlers): void {
-  elements.sizeSlider.addEventListener('input', handlers.updateSize);
-  elements.treeSlider.addEventListener('input', handlers.updateContents);
-  elements.pointSlider.addEventListener('input', handlers.updateContents);
-  elements.terrainToggle.addEventListener('change', handlers.updateLayers);
-  elements.treeToggle.addEventListener('change', handlers.updateLayers);
-  elements.subsurfaceToggle.addEventListener('change', handlers.updateLayers);
-  elements.networkToggle.addEventListener('change', handlers.updateLayers);
-  elements.growNetworkButton.addEventListener('click', handlers.growNetwork);
-  elements.newLandscapeButton.addEventListener('click', handlers.createNewLandscape);
-  window.addEventListener('resize', handlers.resize);
-}
-
-function removeEventListeners(elements: DemoElements, handlers: DemoHandlers): void {
-  elements.sizeSlider.removeEventListener('input', handlers.updateSize);
-  elements.treeSlider.removeEventListener('input', handlers.updateContents);
-  elements.pointSlider.removeEventListener('input', handlers.updateContents);
-  elements.terrainToggle.removeEventListener('change', handlers.updateLayers);
-  elements.treeToggle.removeEventListener('change', handlers.updateLayers);
-  elements.subsurfaceToggle.removeEventListener('change', handlers.updateLayers);
-  elements.networkToggle.removeEventListener('change', handlers.updateLayers);
-  elements.growNetworkButton.removeEventListener('click', handlers.growNetwork);
-  elements.newLandscapeButton.removeEventListener('click', handlers.createNewLandscape);
-  window.removeEventListener('resize', handlers.resize);
-}
-
-function createCamera(): PerspectiveCamera {
-  const camera = new PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.05, 180);
-  camera.position.set(22, 16, 22);
-  return camera;
-}
-
-function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
-  const renderer = new WebGLRenderer({
-    canvas,
-    antialias: false,
-    powerPreference: 'high-performance',
+function updateStats(runtime: DemoRuntime): void {
+  runtime.ui.setStats({
+    framesPerSecond: runtime.metrics.averageFramesPerSecond,
+    p95Milliseconds: runtime.metrics.p95Milliseconds,
+    treeCount: runtime.trees.length,
+    hyphaCount: runtime.networkView?.hyphaCount ?? 0,
+    triangleCount: runtime.sceneContext.renderer.info.render.triangles,
   });
-  renderer.outputColorSpace = SRGBColorSpace;
-  renderer.xr.enabled = true;
-  renderer.xr.setFramebufferScaleFactor(0.9);
-  return renderer;
-}
-
-function createControls(camera: PerspectiveCamera, canvas: HTMLCanvasElement): OrbitControls {
-  const controls = new OrbitControls(camera, canvas);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.target.set(0, 0, 0);
-  controls.update();
-  return controls;
-}
-
-function fitCamera(runtime: DemoRuntime, size: number): void {
-  const direction = new Vector3(1, 0.72, 1).normalize();
-  runtime.camera.position.copy(direction.multiplyScalar(size * 1.15));
-  runtime.controls.minDistance = size * 0.35;
-  runtime.controls.maxDistance = size * 3;
-  runtime.controls.update();
-}
-
-function resizeRuntime(runtime: DemoRuntime): void {
-  const pixelRatio = Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO);
-  runtime.camera.aspect = window.innerWidth / window.innerHeight;
-  runtime.camera.updateProjectionMatrix();
-  runtime.renderer.setPixelRatio(pixelRatio);
-  runtime.renderer.setSize(window.innerWidth, window.innerHeight, false);
 }
 
 function disposeWorld(runtime: DemoRuntime): void {
-  runtime.terrainView?.dispose(runtime.scene);
-  runtime.treeView?.dispose(runtime.scene);
+  runtime.terrainView?.dispose();
+  runtime.treeView?.dispose();
   runtime.networkView?.dispose();
   runtime.terrainView = undefined;
   runtime.treeView = undefined;
   runtime.networkView = undefined;
-  runtime.trees = [];
 }
 
-function disposeRuntime(runtime: DemoRuntime, handlers: DemoHandlers): void {
+function disposeRuntime(runtime: DemoRuntime, resize: () => void): void {
   runtime.generation += 1;
   if (runtime.rebuildFrame !== undefined) cancelAnimationFrame(runtime.rebuildFrame);
-  runtime.renderer.setAnimationLoop(null);
-  removeEventListeners(runtime.elements, handlers);
+  runtime.sceneContext.renderer.setAnimationLoop(null);
+  window.removeEventListener('resize', resize);
+  runtime.ui.dispose();
   disposeWorld(runtime);
-  void runtime.treeAsset.then((asset) => asset.dispose());
+  void runtime.treeAsset.then(
+    (asset) => asset.dispose(),
+    () => undefined,
+  );
   runtime.timer.dispose();
-  runtime.controls.dispose();
-  runtime.renderer.dispose();
-  runtime.vrButton.remove();
-}
-
-function getDemoElements(): DemoElements {
-  return {
-    canvas: requireElement('#scene'),
-    sizeSlider: requireElement('#size-slider'),
-    sizeValue: requireElement('#size-value'),
-    treeSlider: requireElement('#tree-slider'),
-    treeValue: requireElement('#tree-value'),
-    pointSlider: requireElement('#point-slider'),
-    pointValue: requireElement('#point-value'),
-    terrainToggle: requireElement('#terrain-toggle'),
-    treeToggle: requireElement('#tree-toggle'),
-    subsurfaceToggle: requireElement('#subsurface-toggle'),
-    networkToggle: requireElement('#network-toggle'),
-    growNetworkButton: requireElement('#grow-network-button'),
-    newLandscapeButton: requireElement('#new-landscape-button'),
-    statusValue: requireElement('#status-value'),
-    fpsValue: requireElement('#fps-value'),
-    p95Value: requireElement('#p95-value'),
-    treeCountValue: requireElement('#tree-count-value'),
-    hyphaValue: requireElement('#hypha-value'),
-    triangleValue: requireElement('#triangle-value'),
-  };
-}
-
-function requireElement<ElementType extends Element>(selector: string): ElementType {
-  const element = document.querySelector<ElementType>(selector);
-  if (!element) throw new Error(`Required element not found: ${selector}`);
-  return element;
-}
-
-function formatInteger(value: number): string {
-  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
-}
-
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(value);
+  runtime.sceneContext.dispose();
 }
 
 const dispose = start();

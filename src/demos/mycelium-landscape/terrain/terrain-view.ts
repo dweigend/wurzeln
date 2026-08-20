@@ -18,8 +18,6 @@ import terrainFragmentShader from './shaders/terrain.frag.glsl?raw';
 import terrainVertexShader from './shaders/terrain.vert.glsl?raw';
 
 export class TerrainView {
-  readonly triangleCount: number;
-
   private readonly material: ShaderMaterial;
   private readonly mesh: Mesh<BufferGeometry, ShaderMaterial>;
 
@@ -27,7 +25,6 @@ export class TerrainView {
     const geometry = createTerrainGeometry(field);
     this.material = createTerrainMaterial(field);
     this.mesh = new Mesh(geometry, this.material);
-    this.triangleCount = geometry.getIndex()?.count ? (geometry.getIndex()?.count ?? 0) / 3 : 0;
     scene.add(this.mesh);
   }
 
@@ -39,8 +36,8 @@ export class TerrainView {
     this.material.uniforms['uSubsurfaceVisible']!.value = visible ? 1 : 0;
   }
 
-  dispose(scene: Scene): void {
-    scene.remove(this.mesh);
+  dispose(): void {
+    this.mesh.removeFromParent();
     this.mesh.geometry.dispose();
     this.material.dispose();
   }
@@ -70,7 +67,11 @@ function writeTerrainVertices(
       const u = x / (field.resolution - 1);
       const v = z / (field.resolution - 1);
       positions.set(
-        [(u - 0.5) * field.size, field.heights[vertex] ?? 0, (v - 0.5) * field.size],
+        [
+          (u - 0.5) * field.sizeMeters,
+          field.heights[vertex] ?? 0,
+          (v - 0.5) * field.sizeMeters,
+        ],
         vertex * 3,
       );
       uvs.set([u, v], vertex * 2);

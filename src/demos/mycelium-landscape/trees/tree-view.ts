@@ -22,9 +22,6 @@ const MODEL_SCALE = 100;
 const BASE_ROTATION = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
 
 export class TreeView {
-  readonly triangleCount: number;
-  readonly drawCallCount: number;
-
   private readonly meshes: InstancedMesh[];
   private readonly materials: ShaderMaterial[];
 
@@ -33,11 +30,6 @@ export class TreeView {
     this.meshes = asset.parts.map((part, index) =>
       createTreeMesh(part, this.materials[index]!, placements),
     );
-    this.triangleCount = asset.parts.reduce(
-      (sum, part) => sum + ((part.geometry.getIndex()?.count ?? 0) / 3) * placements.length,
-      0,
-    );
-    this.drawCallCount = this.meshes.length;
     scene.add(...this.meshes);
   }
 
@@ -45,8 +37,8 @@ export class TreeView {
     for (const mesh of this.meshes) mesh.visible = visible;
   }
 
-  dispose(scene: Scene): void {
-    scene.remove(...this.meshes);
+  dispose(): void {
+    for (const mesh of this.meshes) mesh.removeFromParent();
     for (const mesh of this.meshes) mesh.geometry.dispose();
     for (const material of this.materials) material.dispose();
   }

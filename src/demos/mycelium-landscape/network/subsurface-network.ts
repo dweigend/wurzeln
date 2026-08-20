@@ -50,11 +50,11 @@ function writeUndergroundPoints(
   seed: number,
 ): void {
   const random = createRandom(seed);
-  const boundary = field.size * 0.46;
+  const boundary = field.sizeMeters * 0.46;
   for (let index = startIndex; index < points.length / 3; index += 1) {
     const x = (random() * 2 - 1) * boundary;
     const z = (random() * 2 - 1) * boundary;
-    const depth = MINIMUM_DEPTH + Math.pow(random(), 1.8) * field.size * DEPTH_RATIO;
+    const depth = MINIMUM_DEPTH + Math.pow(random(), 1.8) * field.sizeMeters * DEPTH_RATIO;
     writePoint(points, index, { x, y: sampleHeight(field, x, z) - depth, z });
   }
 }

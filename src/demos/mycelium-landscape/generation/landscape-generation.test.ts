@@ -10,8 +10,8 @@ import { createTreePlacements } from '../trees/tree-placement.ts';
 
 describe('landscape generation', () => {
   test('creates a deterministic height field and tree distribution', () => {
-    const firstField = createHeightField({ size: 24, seed: 42, resolution: 33 });
-    const secondField = createHeightField({ size: 24, seed: 42, resolution: 33 });
+    const firstField = createHeightField({ sizeMeters: 24, seed: 42, resolution: 33 });
+    const secondField = createHeightField({ sizeMeters: 24, seed: 42, resolution: 33 });
     const firstTrees = createTreePlacements(firstField, 20, 43);
     const secondTrees = createTreePlacements(secondField, 20, 43);
 
@@ -21,7 +21,7 @@ describe('landscape generation', () => {
   });
 
   test('places roots and network points below the terrain surface', () => {
-    const field = createHeightField({ size: 20, seed: 73, resolution: 33 });
+    const field = createHeightField({ sizeMeters: 20, seed: 73, resolution: 33 });
     const trees = createTreePlacements(field, 12, 74);
     const network = createSubsurfaceNetwork(field, trees, 128, 75);
 

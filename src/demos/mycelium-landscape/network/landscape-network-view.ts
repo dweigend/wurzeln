@@ -81,7 +81,7 @@ function createMyceliumMaterial(
     fragmentShader: myceliumFragmentShader,
     uniforms: {
       uTimeSeconds: { value: 20 },
-      uTerrainSizeMeters: { value: field.size },
+      uTerrainSizeMeters: { value: field.sizeMeters },
       uHeightMap: { value: heightTexture },
     },
   });
