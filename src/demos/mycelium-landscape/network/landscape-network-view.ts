@@ -37,16 +37,19 @@ export class LandscapeNetworkView {
   constructor(scene: Scene, field: Readonly<HeightField>, network: Readonly<GeneratedNetwork>) {
     this.heightTexture = createHeightTexture(field);
     this.material = createMyceliumMaterial(field, this.heightTexture);
-    this.mesh = new Mesh(createMyceliumGeometry(network), this.material);
-    this.mesh.visible = false;
+    const geometry = createMyceliumGeometry(network);
+    this.mesh = new Mesh(geometry, this.material);
     this.mesh.frustumCulled = false;
     this.hyphaCount = network.hyphaCount;
     this.triangleCount = network.hyphaCount * TRIANGLES_PER_HYPHA;
     scene.add(this.mesh);
   }
 
+  setVisible(visible: boolean): void {
+    this.mesh.visible = visible;
+  }
+
   setGrowthTime(seconds: number): void {
-    this.mesh.visible = seconds >= 0;
     this.material.uniforms['uTime']!.value = seconds;
   }
 
@@ -84,11 +87,9 @@ function createMyceliumMaterial(
     vertexShader: myceliumVertexShader,
     fragmentShader: myceliumFragmentShader,
     uniforms: {
-      uTime: { value: -1 },
+      uTime: { value: 20 },
       uTerrainSize: { value: field.size },
       uHeightMap: { value: heightTexture },
-      uFogColor: { value: [0.055, 0.035, 0.075] },
-      uFogDensity: { value: 0.026 },
     },
   });
 }

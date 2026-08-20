@@ -16,7 +16,6 @@ export type TreePlacement = {
   z: number;
   rotation: number;
   scale: number;
-  revealDelay: number;
 };
 
 type PlacementCandidate = {
@@ -32,8 +31,6 @@ type PlacementContext = {
   x: number;
   z: number;
   random: () => number;
-  index: number;
-  count: number;
 };
 
 export function createTreePlacements(
@@ -51,7 +48,7 @@ export function createTreePlacements(
     const x = (random() * 2 - 1) * limit;
     const z = (random() * 2 - 1) * limit;
     if (!canPlaceTree({ field, placements, x, z, minimumDistance })) continue;
-    placements.push(createPlacement({ field, x, z, random, index: placements.length, count }));
+    placements.push(createPlacement({ field, x, z, random }));
   }
   return placements;
 }
@@ -71,6 +68,5 @@ function createPlacement(context: Readonly<PlacementContext>): TreePlacement {
     z: context.z,
     rotation: context.random() * Math.PI * 2,
     scale: 0.72 + context.random() * 0.48,
-    revealDelay: context.count > 1 ? (context.index / (context.count - 1)) * 0.64 : 0,
   };
 }

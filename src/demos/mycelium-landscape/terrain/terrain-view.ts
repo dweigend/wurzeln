@@ -1,6 +1,6 @@
 /**
- * Owns the procedural terrain surface and its phase-driven WebGL2 material.
- * Geometry is immutable after generation; animation changes uniforms only.
+ * Owns the procedural terrain surface and its WebGL2 material.
+ * Geometry is immutable after generation; layer controls change visibility.
  */
 
 import {
@@ -31,12 +31,12 @@ export class TerrainView {
     scene.add(this.mesh);
   }
 
-  setTerrainReveal(value: number): void {
-    this.material.uniforms['uTerrainReveal']!.value = value;
+  setVisible(visible: boolean): void {
+    this.mesh.visible = visible;
   }
 
-  setSubsurfaceReveal(value: number): void {
-    this.material.uniforms['uSubsurfaceReveal']!.value = value;
+  setSubsurfaceVisible(visible: boolean): void {
+    this.material.uniforms['uSubsurfaceVisible']!.value = visible ? 1 : 0;
   }
 
   dispose(scene: Scene): void {
@@ -102,8 +102,7 @@ function createTerrainMaterial(field: Readonly<HeightField>): ShaderMaterial {
     fragmentShader: terrainFragmentShader,
     side: DoubleSide,
     uniforms: {
-      uTerrainReveal: { value: 0 },
-      uSubsurfaceReveal: { value: 0 },
+      uSubsurfaceVisible: { value: 0 },
       uMinimumHeight: { value: field.minimumHeight },
       uMaximumHeight: { value: field.maximumHeight },
     },

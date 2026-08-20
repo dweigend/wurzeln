@@ -3,8 +3,7 @@
  * Fragment rejection reveals the subsurface without blended-surface sorting.
  */
 
-uniform float uTerrainReveal;
-uniform float uSubsurfaceReveal;
+uniform float uSubsurfaceVisible;
 uniform float uMinimumHeight;
 uniform float uMaximumHeight;
 
@@ -19,10 +18,7 @@ float hash(vec2 value) {
 }
 
 void main() {
-  float revealNoise = hash(floor(vPosition.xz * 7.0));
-  if (revealNoise > uTerrainReveal) discard;
-
-  float coverage = mix(1.0, 0.3, uSubsurfaceReveal);
+  float coverage = mix(1.0, 0.3, uSubsurfaceVisible);
   float dither = hash(floor(gl_FragCoord.xy));
   if (dither > coverage) discard;
 

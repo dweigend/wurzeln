@@ -11,7 +11,7 @@ import { createRandom } from '../generation/random.ts';
 import { sampleHeight, type HeightField } from '../terrain/height-field.ts';
 import type { TreePlacement } from '../trees/tree-placement.ts';
 
-const ROOT_DEPTH = 0.24;
+const ROOT_DEPTH = 0.02;
 const MINIMUM_DEPTH = 0.35;
 const DEPTH_RATIO = 0.13;
 

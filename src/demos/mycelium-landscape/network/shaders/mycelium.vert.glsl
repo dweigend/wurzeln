@@ -1,6 +1,6 @@
 /*
  * Procedural underground tube deformation constrained by the terrain height map.
- * Growth and later transport reinforcement animate one continuous edge system.
+ * An explicit UI action controls growth before transport reinforcement matures.
  */
 
 uniform float uTime;
@@ -18,10 +18,9 @@ in float aReinforcement;
 out vec3 vNormal;
 out float vReinforcement;
 out float vMaturity;
-out float vViewDepth;
 
 const float PI = 3.141592653589793;
-const float TERRAIN_COVER = 0.16;
+const float TERRAIN_COVER = 0.02;
 
 float hash(float value) {
   return fract(sin(value * 91.731) * 47593.5453);
@@ -85,6 +84,5 @@ void main() {
   vNormal = normalize(mat3(modelMatrix) * radialOffset);
   vReinforcement = aReinforcement;
   vMaturity = smoothstep(1.05, 2.6, localAge);
-  vViewDepth = -viewPosition.z;
   gl_Position = projectionMatrix * viewPosition;
 }

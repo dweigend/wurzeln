@@ -1,12 +1,11 @@
 /**
  * Renders one birch variant as a small set of instanced WebGL2 draw calls.
- * Per-instance delays animate placement without CPU matrix updates per frame.
+ * Layer visibility is independent from immutable instance transformations.
  */
 
 import {
   Color,
   GLSL3,
-  InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
   Quaternion,
@@ -42,8 +41,8 @@ export class TreeView {
     scene.add(...this.meshes);
   }
 
-  setReveal(value: number): void {
-    for (const material of this.materials) material.uniforms['uReveal']!.value = value;
+  setVisible(visible: boolean): void {
+    for (const mesh of this.meshes) mesh.visible = visible;
   }
 
   dispose(scene: Scene): void {
@@ -59,10 +58,6 @@ function createTreeMesh(
   placements: readonly TreePlacement[],
 ): InstancedMesh {
   const geometry = part.geometry.clone();
-  geometry.setAttribute(
-    'aRevealDelay',
-    new InstancedBufferAttribute(Float32Array.from(placements, (tree) => tree.revealDelay), 1),
-  );
   const mesh = new InstancedMesh(geometry, material, placements.length);
   placements.forEach((placement, index) => mesh.setMatrixAt(index, createTreeMatrix(placement)));
   mesh.instanceMatrix.needsUpdate = true;
@@ -88,7 +83,6 @@ function createTreeMaterial(part: Readonly<TreePart>): ShaderMaterial {
     vertexShader: treeVertexShader,
     fragmentShader: treeFragmentShader,
     uniforms: {
-      uReveal: { value: 0 },
       uMap: { value: part.texture },
       uAlphaCutoff: { value: part.alphaCutoff },
       uTint: { value: new Color(...part.tint) },

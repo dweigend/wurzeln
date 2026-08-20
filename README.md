@@ -9,8 +9,8 @@ Open <http://127.0.0.1:5173/> for the plain experiment index.
 - `/demos/cpu-mycelium/`: deterministic CPU branching and stable tip fusion.
 - `/demos/procedural-network/`: dense mycelial topology with shader-only WebGL2
   growth and traffic-driven remodeling for up to 2,000 points.
-- `/demos/mycelium-landscape/`: four-phase WebGL2 MVP with Perlin terrain,
-  instanced CC0 birches, dithered soil, and underground mycelial growth.
+- `/demos/mycelium-landscape/`: live WebGL2 MVP with Perlin terrain, instanced
+  CC0 birches, independently switchable layers, and an underground network.
 
 The procedural network generates one immutable local graph. Approximate flow
 through that same graph produces continuous reinforcement values: frequently
@@ -21,7 +21,8 @@ Volume scaling updates a uniform and does not rebuild the topology.
 The landscape MVP uses one deterministic height field for the terrain surface,
 tree placement, and underground point placement. Tree-root points seed the same
 traffic-weighted graph used by the procedural network demo. All animated scene
-materials live in dedicated GLSL3 files.
+materials live in dedicated GLSL3 files. Sliders rebuild the current world live;
+regeneration keeps all parameter values and layer visibility unchanged.
 
 The local `Birch Trees` asset is by Quaternius, distributed under CC0 1.0, and
 was downloaded from <https://poly.pizza/m/R7qMWzb7nk>.
